@@ -55,10 +55,8 @@ export async function POST(request) {
       );
       const chronoTxs = startIndex !== -1 ? sortedTxs.slice(startIndex) : sortedTxs;
 
-      // Initialize holdings. JEPQ has initial balance before 2025-11-07
-      const holdings = {
-        JEPQ: { shares: 29.77505 }
-      };
+      // Initialize holdings.
+      const holdings = {};
 
       for (const tx of chronoTxs) {
         const sym = tx.symbol.toUpperCase().trim();

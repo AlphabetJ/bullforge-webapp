@@ -38,16 +38,8 @@ export async function GET() {
     );
     const chronoTxs = startIndex !== -1 ? transactions.slice(startIndex) : transactions;
 
-    // Initialize holdings. JEPQ has initial balance before 2025-11-07
-    const holdings = {
-      JEPQ: {
-        symbol: 'JEPQ',
-        shares: 29.77505,
-        averageCost: 1660.83 / 29.77505,
-        totalCost: 1660.83,
-        realizedPL: 0
-      }
-    };
+    // Initialize holdings.
+    const holdings = {};
 
     // Compile realization events directly during processing of SELL transactions
     const profitHistory = [];
