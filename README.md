@@ -1,0 +1,110 @@
+# Bullforge Webapp - Personal Investment Portfolio Tracker
+
+Bullforge Webapp is a self-hosted, lightweight personal investment portfolio tracking application. It features a responsive Vue.js frontend dashboard, a Next.js API backend integrated with a SQLite database, and an automated Python data pipeline that extracts and seeds historical transactions directly from your broker's CSV exports (e.g., Webull).
+
+Real-time stock valuations are dynamically fetched on-the-fly using the Yahoo Finance API.
+
+---
+
+## Key Features
+
+- 📊 **Dynamic Dashboard**: Visualize your asset allocation weight, total portfolio value, and cost basis.
+- 💵 **Performance Tracking**: Compute realized gains/losses (Realized P/L), unrealized gains (Unrealized P/L), and dividend reinvestments (DRIP) dynamically.
+- 🕒 **Monthly Breakdown**: Analyze your realized profits and commissions paid month-by-month.
+- 🗃️ **Robust Database**: Stored locally in a lightweight SQLite database.
+- ⚙️ **CSV Ingestion Pipeline**: Command-line tool to parse historical trade record CSVs, automatically formats fields, generates stable index-based IDs, and imports them with duplicate prevention.
+- 🔒 **Privacy-First**: No external cloud tracking or database syncs. Your broker CSVs and databases are excluded from Git and kept entirely on your local machine.
+
+---
+
+## Directory Structure
+
+```text
+├── backend/                # Next.js API Server
+│   ├── data/               # SQLite database directory (ignored by git)
+│   ├── src/
+│   │   ├── app/            # Next.js App Router (endpoints: /api/portfolio, /api/transactions)
+│   │   └── lib/            # SQLite connection setup and promise wrappers
+│   └── package.json
+│
+├── frontend/               # Vue.js Frontend (Vite)
+│   ├── src/
+│   │   ├── components/     # Visual dashboard cards, tables, charts, and transaction forms
+│   │   ├── App.vue         # State management and UI tab layouts
+│   │   └── style.css       # Premium custom styling (Glassmorphism & Dark Mode)
+│   └── package.json
+│
+├── raw_data/               # Directory for broker CSV exports (ignored by git)
+│
+└── scratch/                # Data pipelines and developer CLI tools
+    └── calculate_portfolio.py  # Python SQLite importer & CSV parser
+```
+
+---
+
+## Tech Stack
+
+- **Frontend**: Vue 3 (Composition API), Vite, Chart.js, HTML5/CSS3.
+- **Backend**: Next.js (App Router), SQLite (`sqlite3` driver).
+- **Data Ingestion**: Python 3.
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) (v18 or higher recommended)
+- [Python 3](https://www.python.org/) (for running the CSV seeder)
+
+---
+
+### Installation & Run
+
+1. **Clone the Repository**:
+   ```bash
+   git clone https://github.com/AlphabetJ/bullforge-webapp.git
+   cd bullforge-webapp
+   ```
+
+2. **Run the Backend (Next.js)**:
+   ```bash
+   cd backend
+   npm install
+   npm run dev
+   ```
+   *The backend server runs on `http://localhost:3000`.*
+
+3. **Run the Frontend (Vue.js)**:
+   Open a separate terminal window:
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+   *The frontend application runs on `http://localhost:5173` (or the port designated by Vite).*
+
+---
+
+## Data Ingestion (Importing your CSVs)
+
+To import your broker transaction logs (e.g. Webull transaction reports):
+
+1. Export your trade statements as CSV files.
+2. Put the CSV files inside the `raw_data/` directory at the project root:
+   ```text
+   raw_data/
+   ├── Webull-2025-11.csv
+   ├── Webull-2025-12.csv
+   └── Webull-2026-06.csv
+   ```
+3. Run the Python importer script:
+   ```bash
+   python scratch/calculate_portfolio.py
+   ```
+
+The script will:
+- Connect to the SQLite database `backend/data/portfolio.db`.
+- Parse the "TRADE RECORDS" section from all CSV files.
+- Automatically check for existing transaction duplicates in the database based on date, symbol, type, shares, and price.
+- Skip duplicate entries and import new transactions seamlessly.
