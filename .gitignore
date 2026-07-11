@@ -1,0 +1,53 @@
+# Dependencies & Build Outputs
+node_modules/
+.next/
+dist/
+dist-ssr/
+build/
+out/
+.vercel/
+*.tsbuildinfo
+
+# Python Virtual Environments & Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+ENV/
+env/
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+backend/data/portfolio.db
+
+# Environment Files
+.env
+.env*.local
+*.local
+
+# Logs and Debug files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Sensitive Personal Transaction Data (CRITICAL)
+raw_data/
+raw_data/*
+
+# System Files & Editor Configurations
+.DS_Store
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
