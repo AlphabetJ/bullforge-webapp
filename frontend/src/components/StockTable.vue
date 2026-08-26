@@ -18,7 +18,11 @@ const formatPercent = (val) => {
 };
 
 const formatShares = (val) => {
-  return typeof val === 'number' ? val.toFixed(2) : Number(val).toFixed(2);
+  const num = typeof val === 'number' ? val : Number(val) || 0;
+  if (num > 0 && num < 0.01) {
+    return '< 0.01';
+  }
+  return num.toFixed(2);
 };
 </script>
 

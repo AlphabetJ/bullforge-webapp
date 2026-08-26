@@ -125,6 +125,14 @@ const formatDate = (dateStr) => {
   return `${day}/${month}/${year}`;
 };
 
+const formatShares = (val) => {
+  const num = typeof val === 'number' ? val : Number(val) || 0;
+  if (num > 0 && num < 0.01) {
+    return '< 0.01';
+  }
+  return num.toFixed(2);
+};
+
 
 onMounted(() => {
   loadAllData();
@@ -286,7 +294,7 @@ onMounted(() => {
                       {{ tx.type }}
                     </span>
                   </td>
-                  <td class="text-right font-semibold">{{ tx.shares }}</td>
+                  <td class="text-right font-semibold">{{ formatShares(tx.shares) }}</td>
                   <td class="text-right">{{ formatCurrency(tx.price) }}</td>
                   <td class="text-right">{{ formatCurrency(tx.fees) }}</td>
                   <td class="text-right font-semibold">

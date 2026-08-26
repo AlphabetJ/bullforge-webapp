@@ -18,6 +18,67 @@ const price = ref(0);
 const fees = ref(0);
 const date = ref(new Date().toISOString().split('T')[0]);
 
+// Date format conversion helpers (ISO YYYY-MM-DD <-> DD/MM/YYYY)
+const isoToDMY = (isoStr) => {
+  if (!isoStr) return '';
+  const parts = isoStr.split('-');
+  if (parts.length === 3) {
+    const [y, m, d] = parts;
+    return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
+  }
+  return isoStr;
+};
+
+const dmyToIso = (dmyStr) => {
+  if (!dmyStr) return '';
+  const clean = dmyStr.trim();
+  const parts = clean.split('/');
+  if (parts.length === 3) {
+    const [d, m, y] = parts;
+    if (d && m && y && y.length === 4) {
+      const day = parseInt(d, 10);
+      const month = parseInt(m, 10);
+      const year = parseInt(y, 10);
+      if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
+        return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      }
+    }
+  }
+  return '';
+};
+
+const datePickerRef = ref(null);
+const displayDate = ref(isoToDMY(date.value));
+
+watch(date, (newIsoDate) => {
+  const formatted = isoToDMY(newIsoDate);
+  if (formatted !== displayDate.value) {
+    displayDate.value = formatted;
+  }
+});
+
+const handleDisplayDateInput = (e) => {
+  let val = e.target.value;
+  displayDate.value = val;
+  const iso = dmyToIso(val);
+  if (iso) {
+    date.value = iso;
+  } else {
+    date.value = '';
+  }
+};
+
+const openDatePicker = () => {
+  if (datePickerRef.value) {
+    if (typeof datePickerRef.value.showPicker === 'function') {
+      datePickerRef.value.showPicker();
+    } else {
+      datePickerRef.value.focus();
+      datePickerRef.value.click();
+    }
+  }
+};
+
 const errorMsg = ref('');
 const successMsg = ref('');
 
@@ -93,12 +154,21 @@ const remainingShares = computed(() => {
   return Math.max(0, selectedAsset.value.shares - (shares.value || 0));
 });
 
+const formatShares = (val) => {
+  const num = typeof val === 'number' ? val : Number(val) || 0;
+  if (num > 0 && num < 0.01) {
+    return '< 0.01';
+  }
+  return num.toFixed(2);
+};
+
 // Validation
 const isValid = computed(() => {
   if (!symbol.value) return false;
   if (!shares.value || shares.value <= 0) return false;
   if (!price.value || price.value <= 0) return false;
   if (fees.value === undefined || fees.value < 0) return false;
+  if (!date.value) return false;
 
   if (type.value === 'SELL' && selectedAsset.value) {
     if (shares.value > selectedAsset.value.shares) {
@@ -181,7 +251,7 @@ const submitForm = () => {
         <select v-model="symbol" class="form-control" required>
           <option value="" disabled selected>-- Select an asset --</option>
           <option v-for="stock in ownedStocks" :key="stock.symbol" :value="stock.symbol">
-            {{ stock.symbol }} (Owned: {{ stock.shares }} shares)
+            {{ stock.symbol }} (Owned: {{ formatShares(stock.shares) }} shares)
           </option>
         </select>
       </div>
@@ -240,12 +310,40 @@ const submitForm = () => {
 
         <div class="form-group">
           <label class="form-label">Date of Transaction</label>
-          <input 
-            v-model="date" 
-            type="date" 
-            class="form-control" 
-            required
-          />
+          <div class="date-input-wrapper" style="position: relative; display: flex; align-items: center;">
+            <input 
+              type="text" 
+              :value="displayDate" 
+              @input="handleDisplayDateInput"
+              placeholder="DD/MM/YYYY" 
+              class="form-control" 
+              required
+              pattern="\d{2}/\d{2}/\d{4}"
+              title="Please use DD/MM/YYYY format (e.g. 12/08/2026)"
+              style="padding-right: 2.5rem;"
+            />
+            <button 
+              type="button" 
+              class="calendar-btn"
+              @click="openDatePicker"
+              title="Select date"
+              style="position: absolute; right: 8px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; padding: 4px; border-radius: 4px; transition: color 0.2s;"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="4"></line>
+                <line x1="8" y1="2" x2="8" y2="4"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+            </button>
+            <input 
+              ref="datePickerRef"
+              type="date" 
+              v-model="date" 
+              style="position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;"
+              tabindex="-1"
+            />
+          </div>
         </div>
       </div>
 
@@ -276,7 +374,7 @@ const submitForm = () => {
           </div>
           <div class="calc-row">
             <span class="calc-label">Remaining Shares:</span>
-            <span class="calc-value">{{ remainingShares }} / {{ selectedAsset.shares }}</span>
+            <span class="calc-value">{{ formatShares(remainingShares) }} / {{ formatShares(selectedAsset.shares) }}</span>
           </div>
           <div class="calc-row">
             <span class="calc-label">Net Realized Return:</span>
