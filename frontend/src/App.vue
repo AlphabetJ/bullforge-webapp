@@ -4,6 +4,7 @@ import StockChart from './components/StockChart.vue';
 import StockTable from './components/StockTable.vue';
 import SalesForm from './components/SalesForm.vue';
 import ProfitHistoryTable from './components/ProfitHistoryTable.vue';
+import SellSimulator from './components/SellSimulator.vue';
 
 const activeTab = ref('dashboard');
 const loading = ref(true);
@@ -176,6 +177,14 @@ onMounted(() => {
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
           Transactions
         </button>
+        <button 
+          class="tab-btn" 
+          :class="{ active: activeTab === 'simulator' }"
+          @click="activeTab = 'simulator'"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          Sell Simulator
+        </button>
       </nav>
     </header>
 
@@ -305,6 +314,11 @@ onMounted(() => {
             </table>
           </div>
         </div>
+      </section>
+
+      <!-- Sell Simulator View -->
+      <section v-if="activeTab === 'simulator'">
+        <SellSimulator :holdings="portfolio.holdings" />
       </section>
     </div>
   </div>
