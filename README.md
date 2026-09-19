@@ -61,28 +61,37 @@ Real-time stock valuations are dynamically fetched on-the-fly using the Yahoo Fi
 
 ### Installation & Run
 
-1. **Clone the Repository**:
-   ```bash
-   git clone https://github.com/AlphabetJ/bullforge-webapp.git
-   cd bullforge-webapp
-   ```
+#### Quick Start (Single Command - Recommended)
+From the project root:
+```bash
+# 1. Install all dependencies (both backend & frontend)
+npm run install:all
 
-2. **Run the Backend (Next.js)**:
+# 2. Start both Backend & Frontend simultaneously
+npm run dev
+```
+- **Backend API**: `http://localhost:3000`
+- **Frontend Dashboard**: `http://localhost:5173`
+
+*(To clear cached builds and start clean, use `npm run dev:clean`)*
+
+---
+
+#### Alternative: Running Separately
+If you prefer running in separate terminals:
+
+1. **Backend (Next.js)**:
    ```bash
    cd backend
    npm install
    npm run dev
    ```
-   *The backend server runs on `http://localhost:3000`.*
-
-3. **Run the Frontend (Vue.js)**:
-   Open a separate terminal window:
+2. **Frontend (Vue.js)**:
    ```bash
    cd frontend
    npm install
    npm run dev
    ```
-   *The frontend application runs on `http://localhost:5173` (or the port designated by Vite).*
 
 ---
 
