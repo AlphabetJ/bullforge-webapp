@@ -1,4 +1,5 @@
 <script setup>
+import AssetIdentity from './AssetIdentity.vue';
 import { computed, ref } from 'vue';
 import { currency, percent, shares } from '../utils/format';
 const props = defineProps({ holdings: { type: Array, required: true } });
@@ -19,7 +20,7 @@ const columns = [{ key: 'symbol', label: 'Asset' }, { key: 'currentPrice', label
       <table>
         <thead><tr><th v-for="column in columns" :key="column.key" :class="{ 'text-right': column.key !== 'symbol' }" :aria-sort="sort === column.key ? (descending ? 'descending' : 'ascending') : 'none'"><button class="sort-button" @click="changeSort(column.key)">{{ column.label }} <span v-if="sort === column.key">{{ descending ? '↓' : '↑' }}</span></button></th></tr></thead>
         <tbody><tr v-for="asset in sorted" :key="asset.symbol">
-          <td><span class="stock-symbol-badge">{{ asset.symbol }}</span></td>
+          <td><AssetIdentity :symbol="asset.symbol" /></td>
           <td class="text-right"><span :class="asset.priceSource === 'cost-fallback' ? 'text-muted' : 'live-price-cell'">{{ currency(asset.currentPrice) }}</span><small v-if="asset.priceSource === 'cost-fallback'" class="table-subline">Cost fallback</small></td>
           <td class="text-right">{{ currency(asset.averageCost) }}</td>
           <td class="text-right">{{ shares(asset.shares) }}</td>

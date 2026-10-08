@@ -1,4 +1,5 @@
 <script setup>
+import AssetIdentity from './AssetIdentity.vue';
 import { ref, computed, watch } from 'vue';
 
 const props = defineProps({
@@ -152,9 +153,9 @@ const scenarioMatrix = computed(() => {
 const priceMarkers = computed(() => {
   if (!selectedStock.value) return [];
   const items = [
-    { label: 'Cost / share', value: selectedStock.value.costBasis / selectedStock.value.shares, color: '#747580' },
-    { label: 'Market', value: selectedStock.value.currentPrice, color: '#365dc0' },
-    { label: 'Target', value: targetPrice.value, color: '#002FA7' }
+    { label: 'Cost / share', value: selectedStock.value.costBasis / selectedStock.value.shares, color: 'var(--text-secondary)' },
+    { label: 'Market', value: selectedStock.value.currentPrice, color: 'var(--chart-2)' },
+    { label: 'Target', value: targetPrice.value, color: 'var(--primary)' }
   ];
   const min = Math.min(...items.map(item => item.value));
   const max = Math.max(...items.map(item => item.value));
@@ -212,7 +213,7 @@ const formatPercent = (val) => {
       <!-- Stock Snapshot Bar -->
       <div class="card stock-snapshot-card fade-in-up">
         <div class="snapshot-badge-col">
-          <span class="stock-symbol-badge main-symbol">{{ selectedStock.symbol }}</span>
+          <AssetIdentity :symbol="selectedStock.symbol" />
           <span class="snapshot-shares">Full Position: <strong>{{ formatShares(selectedStock.shares) }}</strong> shares</span>
         </div>
 
@@ -362,7 +363,7 @@ const formatPercent = (val) => {
           </h2>
 
           <div class="price-comparison">
-            <svg viewBox="0 0 500 40" role="img" aria-label="Cost, market and target price comparison"><line x1="25" x2="475" y1="20" y2="20" stroke="#475569" stroke-width="3"/><circle v-for="marker in priceMarkers" :key="marker.label" :cx="marker.x" cy="20" r="7" :fill="marker.color"><title>{{ marker.label }}: {{ formatCurrency(marker.value) }}</title></circle></svg>
+            <svg viewBox="0 0 500 40" role="img" aria-label="Cost, market and target price comparison"><line x1="25" x2="475" y1="20" y2="20" stroke="var(--panel-hover-border)" stroke-width="3"/><circle v-for="marker in priceMarkers" :key="marker.label" :cx="marker.x" cy="20" r="7" :fill="marker.color"><title>{{ marker.label }}: {{ formatCurrency(marker.value) }}</title></circle></svg>
             <div class="price-marker-labels"><div v-for="marker in priceMarkers" :key="marker.label" :style="{color:marker.color}"><small>{{ marker.label }}</small><strong>{{ formatCurrency(marker.value) }}</strong></div></div>
           </div>
 
@@ -560,7 +561,7 @@ const formatPercent = (val) => {
   width: 44px;
   height: 44px;
   border-radius: var(--radius-md);
-  background: var(--primary);
+  background: var(--primary-solid);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -709,7 +710,7 @@ const formatPercent = (val) => {
   color: var(--success);
 }
 .preset-chip.profit.active {
-  background: var(--success);
+  background: var(--success-solid);
   border-color: var(--success);
   color: #ffffff;
   box-shadow: none;
@@ -723,14 +724,14 @@ const formatPercent = (val) => {
   color: var(--danger);
 }
 .preset-chip.loss.active {
-  background: var(--danger);
+  background: var(--danger-solid);
   border-color: var(--danger);
   color: #ffffff;
   box-shadow: none;
 }
 
 .preset-chip.neutral.active {
-  background: var(--primary);
+  background: var(--primary-solid);
   border-color: var(--primary);
   color: #ffffff;
   box-shadow: none;
@@ -971,13 +972,13 @@ const formatPercent = (val) => {
 }
 
 .btn-select-scenario:hover {
-  background: var(--primary);
+  background: var(--primary-solid);
   border-color: var(--primary);
   color: #ffffff;
 }
 
 .btn-select-scenario.selected {
-  background: var(--primary);
+  background: var(--primary-solid);
   border-color: var(--primary);
   color: #ffffff;
   font-weight: 700;

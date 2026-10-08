@@ -701,7 +701,7 @@ const submitForm = () => {
   border-color: var(--primary);
 }
 
-.calendar-day.outside { color: #65748b; }
+.calendar-day.outside { color: var(--text-muted); }
 
 .calendar-day:focus-visible,
 .calendar-nav button:focus-visible,
@@ -712,8 +712,8 @@ const submitForm = () => {
 
 .calendar-day.selected {
   color: #fff;
-  background: var(--primary);
-  border-color: var(--primary);
+  background: var(--primary-solid);
+  border-color: var(--primary-solid);
   box-shadow: none;
 }
 

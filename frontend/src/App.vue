@@ -1,4 +1,5 @@
 <script setup>
+import AssetIdentity from './components/AssetIdentity.vue';
 import { ref, computed, onMounted } from 'vue';
 import StockChart from './components/StockChart.vue';
 import StockTable from './components/StockTable.vue';
@@ -6,6 +7,13 @@ import SalesForm from './components/SalesForm.vue';
 import ProfitHistoryTable from './components/ProfitHistoryTable.vue';
 import SellSimulator from './components/SellSimulator.vue';
 import { currency, percent, shares, dateLabel, monthLabel } from './utils/format';
+const theme = ref(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+function toggleTheme() {
+  theme.value = theme.value === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = theme.value;
+  document.documentElement.style.colorScheme = theme.value;
+  try { localStorage.setItem('portfolio-theme', theme.value); } catch {}
+}
 const activeTab = ref('dashboard');
 const tabs = [{ id:'dashboard', label:'Dashboard' }, { id:'profit-history', label:'Profit History' }, { id:'transactions', label:'Transactions' }, { id:'simulator', label:'Sell Simulator' }];
 const titles = { dashboard:['Portfolio overview','Your holdings, current value and returns at a glance.'], 'profit-history':['Profit & income','Review your realized returns and sale history.'], transactions:['Transactions','Record activity and review your investment history.'], simulator:['Plan a sale','Explore target prices for a selected position.'] };
@@ -57,6 +65,14 @@ onMounted(loadAllData);
     <header class="header">
       <div class="brand-section"><div class="brand-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17V7m5 10v-4m5 4V9m5 8V4"/></svg></div><span class="brand-name">Jateyanooo's Portfolio</span></div>
       <nav class="nav-tabs" aria-label="Main navigation"><button v-for="tab in tabs" :key="tab.id" class="tab-btn" :class="{active:activeTab === tab.id}" :aria-current="activeTab === tab.id ? 'page' : undefined" @click="activeTab = tab.id"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-if="tab.id === 'dashboard'" d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/><path v-else-if="tab.id === 'profit-history'" d="M4 4v16h16M8 15l4-5 4 2 4-7"/><path v-else-if="tab.id === 'transactions'" d="M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4"/><path v-else d="M4 20V4h16v16H4zm4-12h8m-8 4h2m4 0h2m-8 4h2m4 0h2"/></svg>{{ tab.label }}</button></nav>
+      <button class="theme-switch" type="button" role="switch" :aria-checked="theme === 'dark'" aria-label="Dark mode" :title="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'" @click="toggleTheme">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path v-if="theme === 'dark'" d="M20.9 13a9 9 0 0 1-9.9-9.9A9 9 0 1 0 20.9 13Z"/>
+          <g v-else><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></g>
+        </svg>
+        <span class="theme-switch-label">Dark mode</span>
+        <span class="theme-switch-track" :class="{ enabled:theme === 'dark' }" aria-hidden="true"><span></span></span>
+      </button>
     </header>
     <div class="page-heading"><div><h1>{{ titles[activeTab][0] }}</h1><p class="muted">{{ titles[activeTab][1] }}</p></div><div class="refresh-tools"><span v-if="updatedAt" class="muted">Calculated {{ updatedAt }} ICT · USD</span><button class="compact-button" :disabled="loading" @click="loadAllData"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6 7a7 7 0 0 1 12-1l2 3M18 17a7 7 0 0 1-12 1l-2-3"/></svg>{{ loading ? 'Refreshing…' : 'Refresh' }}</button></div></div>
     <div v-if="error" class="error-banner" role="alert">{{ error }} <button class="compact-button" :disabled="loading" @click="loadAllData">Retry</button><p v-if="hasLoaded">Showing previously loaded data.</p></div>
@@ -83,7 +99,7 @@ onMounted(loadAllData);
             <div class="panel-heading"><div><h2>Activity</h2><p class="muted">{{ filteredTransactions.length }} of {{ transactions.length }} transactions</p></div></div>
             <div class="transaction-filters"><input v-model="search" class="form-control" placeholder="Search asset…" aria-label="Search transactions by asset"/><select v-model="action" class="compact-select" aria-label="Transaction action"><option value="All">All actions</option><option value="BUY">Buy</option><option value="SELL">Sell</option></select><select v-model="month" class="compact-select" aria-label="Transaction month"><option value="All">All time</option><option v-for="key in months" :key="key" :value="key">{{ monthLabel(key) }}</option></select></div>
           <div v-if="!filteredTransactions.length" class="empty-state">No transactions match your filters.</div>
-          <div v-else class="table-container ledger-table"><table><thead><tr><th>Date</th><th>Asset</th><th>Activity</th><th class="text-right">Shares</th><th class="text-right">Price</th><th class="text-right">Fees</th><th class="text-right">Amount</th></tr></thead><tbody><tr v-for="tx in filteredTransactions" :key="tx.id"><td>{{ dateLabel(tx.date) }}</td><td><span class="stock-symbol-badge">{{ tx.symbol }}</span></td><td><span class="badge" :class="isDrip(tx) ? 'badge-income' : tx.type === 'BUY' ? 'badge-success' : 'badge-danger'">{{ isDrip(tx) ? 'DRIP' : tx.type }}</span><small v-if="isDrip(tx)" class="table-subline">{{ tx.source ? 'Recorded dividend' : 'Estimated dividend' }}</small></td><td class="text-right">{{ shares(tx.shares) }}</td><td class="text-right">{{ currency(tx.price) }}</td><td class="text-right">{{ currency(tx.fees) }}</td><td class="text-right font-semibold">{{ currency(tx.shares * tx.price + (tx.type === 'BUY' ? 1 : -1) * (tx.fees || 0)) }}<small class="table-subline">{{ tx.type === 'BUY' ? 'Purchase cost' : 'Net sale proceeds' }}</small></td></tr></tbody></table></div>
+          <div v-else class="table-container ledger-table"><table><thead><tr><th>Date</th><th>Asset</th><th>Activity</th><th class="text-right">Shares</th><th class="text-right">Price</th><th class="text-right">Fees</th><th class="text-right">Amount</th></tr></thead><tbody><tr v-for="tx in filteredTransactions" :key="tx.id"><td>{{ dateLabel(tx.date) }}</td><td><AssetIdentity :symbol="tx.symbol" /></td><td><span class="badge" :class="isDrip(tx) ? 'badge-income' : tx.type === 'BUY' ? 'badge-success' : 'badge-danger'">{{ isDrip(tx) ? 'DRIP' : tx.type }}</span><small v-if="isDrip(tx)" class="table-subline">{{ tx.source ? 'Recorded dividend' : 'Estimated dividend' }}</small></td><td class="text-right">{{ shares(tx.shares) }}</td><td class="text-right">{{ currency(tx.price) }}</td><td class="text-right">{{ currency(tx.fees) }}</td><td class="text-right font-semibold">{{ currency(tx.shares * tx.price + (tx.type === 'BUY' ? 1 : -1) * (tx.fees || 0)) }}<small class="table-subline">{{ tx.type === 'BUY' ? 'Purchase cost' : 'Net sale proceeds' }}</small></td></tr></tbody></table></div>
         </div>
         </div>
       </section>

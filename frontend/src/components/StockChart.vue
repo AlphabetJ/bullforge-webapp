@@ -1,11 +1,12 @@
 <script setup>
+import AssetIdentity from './AssetIdentity.vue';
 import { computed, ref, watch } from 'vue';
 import { currency } from '../utils/format';
 
 const props = defineProps({ holdings: { type: Array, required: true } });
 const basis = ref('market');
 const highlighted = ref(null);
-const colors = ['#002FA7', '#6886d3', '#4d5770', '#a4b6e6', '#365dc0', '#8e9ab5', '#222c47', '#c4cde0'];
+const colors = Array.from({ length:8 }, (_, index) => `var(--chart-${index + 1})`);
 const circumference = 2 * Math.PI * 80;
 const basisLabel = computed(() => basis.value === 'market' ? 'Market value' : 'Cost basis');
 const assets = computed(() => {
@@ -70,7 +71,7 @@ watch(basis, () => { highlighted.value = null; });
             @click="highlighted = highlighted === asset.symbol ? null : asset.symbol"
             :aria-label="`${asset.symbol}: ${asset.allocation.toFixed(2)}%, ${currency(asset.amount)}`">
             <span class="allocation-dot" :style="{ background:asset.color }" aria-hidden="true"></span>
-            <span class="allocation-asset"><strong>{{ asset.symbol }}</strong><small>{{ currency(asset.amount) }}</small></span>
+            <span class="allocation-asset"><AssetIdentity :symbol="asset.symbol" /><small class="allocation-amount">{{ currency(asset.amount) }}</small></span>
             <span class="allocation-percent">{{ asset.allocation.toFixed(2) }}%</span>
           </button>
         </li>
@@ -94,7 +95,7 @@ watch(basis, () => { highlighted.value = null; });
 .allocation-item:hover,.allocation-item.highlighted { background:var(--bg-dark); }
 .allocation-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
 .allocation-asset { display:flex; flex-direction:column; gap:2px; }
-.allocation-asset strong { font-size:12px; font-weight:600; }
+.allocation-amount { margin-left:41px; }
 .allocation-asset small { font-size:10px; color:var(--text-secondary); font-variant-numeric:tabular-nums; }
 .allocation-percent { margin-left:auto; font-size:12px; font-weight:550; font-variant-numeric:tabular-nums; }
 .allocation-note { font-size:12px; text-align:center; margin-bottom:12px; }
