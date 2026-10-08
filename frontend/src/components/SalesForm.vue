@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, nextTick, onMounted, onBeforeUnmount } from 'vue';
 
 const props = defineProps({
   holdings: {
@@ -16,7 +16,8 @@ const symbol = ref('');
 const shares = ref(1);
 const price = ref(0);
 const fees = ref(0);
-const date = ref(new Date().toISOString().split('T')[0]);
+const toLocalIso = (value) => `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+const date = ref(toLocalIso(new Date()));
 
 // Date format conversion helpers (ISO YYYY-MM-DD <-> DD/MM/YYYY)
 const isoToDMY = (isoStr) => {
@@ -39,7 +40,8 @@ const dmyToIso = (dmyStr) => {
       const day = parseInt(d, 10);
       const month = parseInt(m, 10);
       const year = parseInt(y, 10);
-      if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
+      const parsed = new Date(year, month - 1, day);
+      if (day >= 1 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100 && parsed.getDate() === day && parsed.getMonth() === month - 1) {
         return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       }
     }
@@ -47,8 +49,66 @@ const dmyToIso = (dmyStr) => {
   return '';
 };
 
-const datePickerRef = ref(null);
+const calendarOpen = ref(false);
+const calendarAbove = ref(false);
+const calendarRoot = ref(null);
+const calendarTrigger = ref(null);
+const calendarPanel = ref(null);
 const displayDate = ref(isoToDMY(date.value));
+const visibleMonth = ref(date.value ? new Date(`${date.value}T00:00:00`) : new Date());
+
+const monthLabel = computed(() => visibleMonth.value.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
+const calendarDays = computed(() => {
+  const year = visibleMonth.value.getFullYear();
+  const month = visibleMonth.value.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const startOffset = firstDay.getDay();
+  return Array.from({ length: 42 }, (_, index) => {
+    const cell = new Date(year, month, index - startOffset + 1);
+    const iso = toLocalIso(cell);
+    return { key: iso, day: cell.getDate(), iso, outside: cell.getMonth() !== month,
+      label: cell.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) };
+  });
+});
+
+const todayIso = (() => {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+})();
+
+const shiftMonth = (amount) => {
+  visibleMonth.value = new Date(visibleMonth.value.getFullYear(), visibleMonth.value.getMonth() + amount, 1);
+};
+
+const closeCalendar = () => {
+  calendarOpen.value = false;
+  calendarTrigger.value?.focus();
+};
+
+const selectDate = (iso) => {
+  date.value = iso;
+  closeCalendar();
+};
+
+const handleCalendarClickOutside = (event) => {
+  if (calendarRoot.value && !calendarRoot.value.contains(event.target)) {
+    calendarOpen.value = false;
+  }
+};
+
+const handleCalendarKeydown = (event) => {
+  if (event.key === 'Escape' && calendarOpen.value) closeCalendar();
+};
+
+onMounted(() => {
+  document.addEventListener('pointerdown', handleCalendarClickOutside);
+  document.addEventListener('keydown', handleCalendarKeydown);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', handleCalendarClickOutside);
+  document.removeEventListener('keydown', handleCalendarKeydown);
+});
 
 watch(date, (newIsoDate) => {
   const formatted = isoToDMY(newIsoDate);
@@ -68,14 +128,19 @@ const handleDisplayDateInput = (e) => {
   }
 };
 
-const openDatePicker = () => {
-  if (datePickerRef.value) {
-    if (typeof datePickerRef.value.showPicker === 'function') {
-      datePickerRef.value.showPicker();
-    } else {
-      datePickerRef.value.focus();
-      datePickerRef.value.click();
-    }
+const openDatePicker = async () => {
+  if (date.value) visibleMonth.value = new Date(`${date.value}T00:00:00`);
+  calendarOpen.value = !calendarOpen.value;
+  if (calendarOpen.value) {
+    calendarAbove.value = false;
+    await nextTick();
+    const anchor = calendarRoot.value.getBoundingClientRect();
+    const height = calendarPanel.value.offsetHeight;
+    calendarAbove.value = window.innerHeight - anchor.bottom < height + 16 && anchor.top > height + 16;
+    await nextTick();
+    const panel = calendarPanel.value;
+    const initialDay = panel?.querySelector('.selected') || panel?.querySelector('.today') || panel?.querySelector('.calendar-day:not(.outside)');
+    initialDay?.focus({ preventScroll: true });
   }
 };
 
@@ -309,25 +374,28 @@ const submitForm = () => {
         </div>
 
         <div class="form-group">
-          <label class="form-label">Date of Transaction</label>
-          <div class="date-input-wrapper" style="position: relative; display: flex; align-items: center;">
+          <label for="transaction-date" class="form-label">Date of Transaction</label>
+          <div ref="calendarRoot" class="date-input-wrapper" @focusout="(event) => { if (!event.currentTarget.contains(event.relatedTarget)) calendarOpen = false; }">
             <input 
+              id="transaction-date"
               type="text" 
               :value="displayDate" 
               @input="handleDisplayDateInput"
               placeholder="DD/MM/YYYY" 
-              class="form-control" 
+              class="form-control date-text-input" 
               required
               pattern="\d{2}/\d{2}/\d{4}"
               title="Please use DD/MM/YYYY format (e.g. 12/08/2026)"
-              style="padding-right: 2.5rem;"
             />
             <button 
+              ref="calendarTrigger"
               type="button" 
-              class="calendar-btn"
+              class="calendar-btn calendar-trigger"
               @click="openDatePicker"
+              :aria-expanded="calendarOpen"
+              aria-haspopup="dialog"
+              aria-label="Open transaction date calendar"
               title="Select date"
-              style="position: absolute; right: 8px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; padding: 4px; border-radius: 4px; transition: color 0.2s;"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -336,13 +404,44 @@ const submitForm = () => {
                 <line x1="3" y1="10" x2="21" y2="10"></line>
               </svg>
             </button>
-            <input 
-              ref="datePickerRef"
-              type="date" 
-              v-model="date" 
-              style="position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;"
-              tabindex="-1"
-            />
+            <Transition name="calendar-popover">
+              <div v-if="calendarOpen" ref="calendarPanel" class="calendar-popover" :class="{ 'calendar-above': calendarAbove }" role="dialog" aria-label="Choose transaction date">
+                <div class="calendar-heading">
+                  <div>
+                    <span class="calendar-eyebrow">Transaction date</span>
+                    <strong>{{ monthLabel }}</strong>
+                  </div>
+                  <div class="calendar-nav">
+                    <button type="button" aria-label="Previous month" @click="shiftMonth(-1)">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+                    </button>
+                    <button type="button" aria-label="Next month" @click="shiftMonth(1)">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+                    </button>
+                  </div>
+                </div>
+                <div class="calendar-grid calendar-weekdays" aria-hidden="true">
+                  <span v-for="weekday in ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA']" :key="weekday">{{ weekday }}</span>
+                </div>
+                <div class="calendar-grid calendar-dates">
+                  <span v-for="cell in calendarDays" :key="cell.key" class="calendar-day-cell">
+                    <button
+                      type="button"
+                      class="calendar-day"
+                      :class="{ selected: date === cell.iso, today: todayIso === cell.iso, outside: cell.outside }"
+                      :aria-label="cell.label"
+                      :aria-current="todayIso === cell.iso ? 'date' : undefined"
+                      :aria-pressed="date === cell.iso"
+                      @click="selectDate(cell.iso)"
+                    >{{ cell.day }}</button>
+                  </span>
+                </div>
+                <div class="calendar-footer">
+                  <span><i class="calendar-today-dot"></i> Today · {{ isoToDMY(todayIso) }}</span>
+                  <button type="button" @click="selectDate(todayIso)">Today</button>
+                </div>
+              </div>
+            </Transition>
           </div>
         </div>
       </div>
@@ -422,3 +521,230 @@ const submitForm = () => {
     </div>
   </div>
 </template>
+
+<!-- Unscoped, uniquely named calendar classes also survive adding styles during Vite HMR. -->
+<style>
+.date-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.date-text-input {
+  padding-right: 2.8rem;
+}
+
+.calendar-trigger {
+  position: absolute;
+  right: 0.55rem;
+  display: grid;
+  place-items: center;
+  padding: 0.4rem;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: 0.55rem;
+  cursor: pointer;
+  transition: color 160ms ease, background 160ms ease;
+}
+
+.calendar-trigger:hover,
+.calendar-trigger:focus-visible {
+  color: var(--text-primary);
+  background: rgba(148, 163, 184, 0.14);
+  outline: none;
+}
+
+.calendar-popover {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 0.65rem);
+  right: 0;
+  width: min(20rem, calc(100vw - 3rem));
+  padding: 1.15rem;
+  color: var(--text-primary);
+  background: linear-gradient(145deg, #202b40, #172132 70%);
+  border: 1px solid #39435c;
+  border-radius: 1.2rem;
+  box-shadow: 0 24px 60px #060b18a6, 0 0 0 4px #0b0f194d, inset 0 1px 0 #ffffff08;
+}
+
+.calendar-heading,
+.calendar-nav,
+.calendar-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.calendar-popover.calendar-above {
+  top: auto;
+  bottom: calc(100% + 0.65rem);
+  transform-origin: bottom right;
+}
+
+.calendar-heading {
+  margin-bottom: 1rem;
+}
+
+.calendar-heading > div:first-child {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.calendar-eyebrow {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.025em;
+}
+
+.calendar-heading strong {
+  font-size: 1.15rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.calendar-nav {
+  gap: 0.35rem;
+}
+
+.calendar-nav button {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  color: var(--text-secondary);
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 0.6rem;
+  cursor: pointer;
+  transition: color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.calendar-nav button:hover {
+  color: var(--text-primary);
+  background: rgba(148, 163, 184, 0.2);
+  transform: translateY(-1px);
+}
+
+.calendar-nav svg {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  text-align: center;
+}
+
+.calendar-weekdays {
+  margin-bottom: 0.35rem;
+  color: var(--text-secondary);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.calendar-weekdays span {
+  padding: 0.4rem 0;
+}
+
+.calendar-day-cell {
+  display: grid;
+  min-height: 2.5rem;
+  place-items: center;
+}
+
+.calendar-day {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.82rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.65rem;
+  cursor: pointer;
+  transition: color 140ms ease, background 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.calendar-day:hover {
+  background: rgba(148, 163, 184, 0.15);
+  transform: scale(1.06);
+}
+
+.calendar-day.today {
+  color: #a5b4fc;
+  border-color: #818cf880;
+}
+
+.calendar-day.outside { color: #65748b; }
+
+.calendar-day:focus-visible,
+.calendar-nav button:focus-visible,
+.calendar-footer button:focus-visible {
+  outline: 2px solid #a5b4fc;
+  outline-offset: 2px;
+}
+
+.calendar-day.selected {
+  color: #fff;
+  background: linear-gradient(135deg, #818cf8, #6366f1);
+  border-color: var(--primary, #6366f1);
+  box-shadow: 0 5px 14px rgba(99, 102, 241, 0.32);
+}
+
+.calendar-footer {
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+  padding-top: 0.75rem;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.calendar-footer > span { display: flex; align-items: center; gap: 0.4rem; }
+.calendar-today-dot { width: 5px; height: 5px; border-radius: 50%; background: #a5b4fc; }
+
+.calendar-footer button {
+  padding: 0.35rem 0.6rem;
+  color: #c7d2fe;
+  font: inherit;
+  font-weight: 700;
+  background: rgba(99, 102, 241, 0.12);
+  border: 0;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.calendar-footer button:hover {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+.calendar-popover-enter-active,
+.calendar-popover-leave-active {
+  transition: opacity 150ms ease, transform 150ms ease;
+  transform-origin: top right;
+}
+
+.calendar-popover-enter-from,
+.calendar-popover-leave-to {
+  opacity: 0;
+  transform: translateY(-5px) scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calendar-popover, .calendar-popover *, .calendar-trigger {
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>
