@@ -16,6 +16,7 @@ const symbol = ref('');
 const shares = ref(1);
 const price = ref(0);
 const fees = ref(0);
+const dividendReinvestment = ref(false);
 const toLocalIso = (value) => `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
 const date = ref(toLocalIso(new Date()));
 
@@ -174,6 +175,7 @@ watch(symbol, (newSymbol) => {
 
 // Reset symbol when type switches
 watch(type, (newType) => {
+  dividendReinvestment.value = false;
   symbol.value = '';
   shares.value = 1;
   price.value = 0;
@@ -262,7 +264,8 @@ const submitForm = () => {
     shares: parseFloat(shares.value),
     price: parseFloat(price.value),
     fees: parseFloat(fees.value || 0),
-    date: date.value
+    date: date.value,
+    source: type.value === 'BUY' && dividendReinvestment.value ? 'DIVIDEND_REINVESTMENT' : 'TRADE'
   };
 
   emit('add-transaction', txData, (success, msg) => {
@@ -271,6 +274,7 @@ const submitForm = () => {
       // Reset form fields
       shares.value = 1;
       fees.value = 0;
+      dividendReinvestment.value = false;
       // If we sold everything, reset symbol selector
       if (type.value === 'SELL' && remainingShares.value === 0) {
         symbol.value = '';
@@ -496,6 +500,11 @@ const submitForm = () => {
         ✓ {{ successMsg }}
       </div>
 
+      <div v-if="type === 'BUY'" class="income-source-choice">
+        <label><input type="checkbox" v-model="dividendReinvestment" /> ซื้อซ้ำจากเงินปันผล (DRIP)</label>
+        <p class="muted">เลือกเฉพาะเมื่อเงินปันผลถูกนำมาซื้อหน่วยเพิ่ม มูลค่าซื้อรวมค่าธรรมเนียมจะบันทึกเป็นปันผลลงทุนซ้ำและเป็นต้นทุนของหน่วยใหม่</p>
+      </div>
+
       <div class="btn-row">
         <button 
           type="submit" 
@@ -508,17 +517,18 @@ const submitForm = () => {
       </div>
     </form>
 
-    <div style="margin-top: 2rem; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 1rem;">
-      <h3 style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.5rem; font-weight: 600;">Developer Utility</h3>
+    <details style="margin-top: 2rem; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 1rem;">
+      <summary class="muted">Advanced: replace portfolio with demo data</summary>
+      <p class="muted">This permanently replaces all transaction records.</p>
       <button 
         type="button" 
         class="btn btn-secondary" 
         style="width: 100%; font-size: 0.8rem; padding: 0.5rem;"
         @click="$emit('reset-portfolio')"
       >
-        Reset Database to Seed Data
+        Replace All Transactions with Demo Data
       </button>
-    </div>
+    </details>
   </div>
 </template>
 
@@ -747,4 +757,11 @@ const submitForm = () => {
     transition-duration: 0.01ms !important;
   }
 }
+</style>
+
+<style scoped>
+.income-source-choice { margin-top:1rem; font-size:.85rem; }
+.income-source-choice label { display:flex; gap:.5rem; align-items:center; }
+.income-source-choice p { font-size:.8rem; margin-top:.5rem; line-height:1.7; }
+details summary { cursor:pointer; font-size:.8rem; }
 </style>

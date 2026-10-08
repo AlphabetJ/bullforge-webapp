@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { allQuery } from '@/lib/db';
 import { fetchYahooPrice } from '@/lib/market-prices';
 
-
 export async function GET() {
   try {
     // Fetch all transactions chronologically (oldest first)
@@ -24,9 +23,10 @@ export async function GET() {
     const profitHistory = [];
     
     let totalRealizedPL = 0;
-    let totalJepqDrip = 0;
+    let totalDividendIncome = 0;
+    const dividendHistory = [];
     const realizedPLByMonth = {};
-    const jepqDripByMonth = {};
+    const dividendIncomeByMonth = {};
 
     // Process transactions sequentially
     for (const tx of chronoTxs) {
@@ -37,26 +37,18 @@ export async function GET() {
       const fees = parseFloat(tx.fees || 0);
       const monthKey = tx.date.substring(0, 7); // YYYY-MM
 
-      // Check if it is JEPQ DRIP (BUY, fees = 0, shares < 1.0)
-      const isJepqDrip = (symbol === 'JEPQ' && type === 'BUY' && fees === 0 && shares < 1.0);
-
-      if (isJepqDrip) {
-        totalJepqDrip += shares * price;
-        jepqDripByMonth[monthKey] = (jepqDripByMonth[monthKey] || 0) + (shares * price);
-        if (!holdings[symbol]) {
-          holdings[symbol] = {
-            symbol,
-            shares: 0,
-            averageCost: 0,
-            totalCost: 0,
-            realizedPL: 0
-          };
-        }
-        const stock = holdings[symbol];
-        stock.shares += shares;
-        stock.totalCost += (shares * price);
-        stock.averageCost = stock.shares > 0 ? stock.totalCost / stock.shares : 0;
-        continue;
+      // Legacy imports lack income metadata. Keep the existing JEPQ rule visible as an estimate.
+      // Explicit TRADE entries, including fractional purchases, never become dividends.
+      const inferredDividend = !tx.source && String(tx.id).startsWith('csv_') &&
+        symbol === 'JEPQ' && type === 'BUY' && fees === 0 && shares < 1;
+      const isDividendReinvestment = type === 'BUY' &&
+        (tx.source === 'DIVIDEND_REINVESTMENT' || inferredDividend);
+      if (isDividendReinvestment) {
+        const amount = Number((shares * price + fees).toFixed(2));
+        totalDividendIncome += amount;
+        dividendIncomeByMonth[monthKey] = (dividendIncomeByMonth[monthKey] || 0) + amount;
+        dividendHistory.push({ id: tx.id, symbol, date: tx.date, amount: Number(amount.toFixed(2)),
+          inferred: inferredDividend, shares, price });
       }
 
       if (!holdings[symbol]) {
@@ -82,7 +74,8 @@ export async function GET() {
         const proceeds = (shares * price) - fees;
         const costBasisOfSoldShares = shares * stock.averageCost;
 
-        const gainOrLoss = proceeds - costBasisOfSoldShares;
+        // Round each realized event once, so cards, monthly totals and the ledger reconcile.
+        const gainOrLoss = Number((proceeds - costBasisOfSoldShares).toFixed(2));
         stock.realizedPL += gainOrLoss;
         totalRealizedPL += gainOrLoss;
         realizedPLByMonth[monthKey] = (realizedPLByMonth[monthKey] || 0) + gainOrLoss;
@@ -160,6 +153,7 @@ export async function GET() {
           costBasis: parseFloat(costBasis.toFixed(2)),
           currentPrice: parseFloat(currentPrice.toFixed(2)),
           currentValue: parseFloat(currentValue.toFixed(2)),
+          priceSource: livePrices[symbol] !== undefined ? 'market' : 'cost-fallback',
           unrealizedPL: parseFloat(unrealizedPL.toFixed(2)),
           unrealizedPLPercent: parseFloat(unrealizedPLPercent.toFixed(2)),
           realizedPL: parseFloat(stock.realizedPL.toFixed(2))
@@ -167,34 +161,26 @@ export async function GET() {
       }
     }
 
-    // Calculate allocation weight for each active asset (based on capital invested)
+    // Market weights describe the current portfolio; retain cost weights separately.
     activeHoldings.forEach(asset => {
-      asset.weight = totalCapitalInvested > 0 
-        ? parseFloat(((asset.costBasis / totalCapitalInvested) * 100).toFixed(2)) 
-        : 0;
+      asset.weight = totalCurrentValue > 0
+        ? Number((asset.currentValue / totalCurrentValue * 100).toFixed(2)) : 0;
+      asset.costWeight = totalCapitalInvested > 0
+        ? Number((asset.costBasis / totalCapitalInvested * 100).toFixed(2)) : 0;
     });
-
-    // Sort active holdings by weight descending
     activeHoldings.sort((a, b) => b.weight - a.weight);
 
-    // Deduct JEPQ DRIP from active trading realized PL
-    const netRealizedPL = totalRealizedPL - totalJepqDrip;
-
-    // Calculate monthly realized PL breakdown
-    const monthlyPLBreakdown = {
-      All: parseFloat(netRealizedPL.toFixed(2))
-    };
-
+    // Reinvestment creates cost basis, not a trading loss. A later sale realizes
+    // only the change above/below that basis, avoiding double-counting the dividend.
+    const monthlyPLBreakdown = { All: Number(totalRealizedPL.toFixed(2)) };
+    const monthlyDividendIncome = { All: Number(totalDividendIncome.toFixed(2)) };
     const allMonths = Array.from(new Set([
-      ...Object.keys(realizedPLByMonth),
-      ...Object.keys(jepqDripByMonth)
+      ...Object.keys(realizedPLByMonth), ...Object.keys(dividendIncomeByMonth)
     ])).sort();
-
-    allMonths.forEach(mKey => {
-      const rPL = realizedPLByMonth[mKey] || 0;
-      const drip = jepqDripByMonth[mKey] || 0;
-      monthlyPLBreakdown[mKey] = parseFloat((rPL - drip).toFixed(2));
-    });
+    for (const month of allMonths) {
+      monthlyPLBreakdown[month] = Number((realizedPLByMonth[month] || 0).toFixed(2));
+      monthlyDividendIncome[month] = Number((dividendIncomeByMonth[month] || 0).toFixed(2));
+    }
 
     // Sort profitHistory by lastTransactionDate descending
     profitHistory.sort((a, b) => new Date(b.lastTransactionDate) - new Date(a.lastTransactionDate));
@@ -202,13 +188,21 @@ export async function GET() {
     return NextResponse.json({
       holdings: activeHoldings,
       profitHistory,
+      dividendHistory,
       summary: {
         totalCapitalInvested: parseFloat(totalCapitalInvested.toFixed(2)),
         totalCurrentValue: parseFloat(totalCurrentValue.toFixed(2)),
         totalUnrealizedPL: parseFloat((totalCurrentValue - totalCapitalInvested).toFixed(2)),
         totalUnrealizedPLPercent: totalCapitalInvested > 0 ? parseFloat(((totalCurrentValue - totalCapitalInvested) / totalCapitalInvested * 100).toFixed(2)) : 0,
-        totalRealizedPL: parseFloat(netRealizedPL.toFixed(2)),
-        netProfitLoss: parseFloat((netRealizedPL + totalCurrentValue - totalCapitalInvested).toFixed(2)),
+        totalRealizedPL: parseFloat(totalRealizedPL.toFixed(2)),
+        totalDividendIncome: Number(totalDividendIncome.toFixed(2)),
+        totalInvestmentIncome: Number((totalRealizedPL + totalDividendIncome).toFixed(2)),
+        dividendIncomeIsEstimated: dividendHistory.some(event => event.inferred),
+        monthlyDividendIncome,
+        periodStart: chronoTxs[0]?.date || null,
+        valuationIsEstimated: activeHoldings.some(asset => asset.priceSource === 'cost-fallback'),
+        calculatedAt: new Date().toISOString(),
+        netProfitLoss: parseFloat((totalRealizedPL + totalDividendIncome + totalCurrentValue - totalCapitalInvested).toFixed(2)),
         monthlyRealizedPL: monthlyPLBreakdown
       },
       marketPrices: livePrices

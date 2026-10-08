@@ -22,7 +22,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // Initialize tables
-db.serialize(() => {
+const databaseReady = new Promise((resolve, reject) => {
   db.run(`
     CREATE TABLE IF NOT EXISTS transactions (
       id TEXT PRIMARY KEY,
@@ -33,11 +33,23 @@ db.serialize(() => {
       fees REAL NOT NULL DEFAULT 0.0,
       date TEXT NOT NULL
     )
-  `);
+  `, (error) => {
+    if (error) return reject(error);
+    db.all('PRAGMA table_info(transactions)', (schemaError, columns) => {
+      if (schemaError) return reject(schemaError);
+      if (columns.some(column => column.name === 'source')) return resolve();
+      // Null preserves the distinction between legacy imports and explicit new entries.
+      db.run('ALTER TABLE transactions ADD COLUMN source TEXT', migrationError => {
+        if (migrationError) reject(migrationError);
+        else resolve();
+      });
+    });
+  });
 });
 
 // Promise-based query wrappers
-export function runQuery(sql, params = []) {
+export async function runQuery(sql, params = []) {
+  await databaseReady;
   return new Promise((resolve, reject) => {
     db.run(sql, params, function (err) {
       if (err) {
@@ -49,7 +61,8 @@ export function runQuery(sql, params = []) {
   });
 }
 
-export function allQuery(sql, params = []) {
+export async function allQuery(sql, params = []) {
+  await databaseReady;
   return new Promise((resolve, reject) => {
     db.all(sql, params, (err, rows) => {
       if (err) {
@@ -61,7 +74,8 @@ export function allQuery(sql, params = []) {
   });
 }
 
-export function getQuery(sql, params = []) {
+export async function getQuery(sql, params = []) {
+  await databaseReady;
   return new Promise((resolve, reject) => {
     db.get(sql, params, (err, row) => {
       if (err) {

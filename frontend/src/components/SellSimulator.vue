@@ -43,44 +43,38 @@ const round2 = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
 // Update derived values from target percent
 const updateFromPercent = (pct) => {
   if (!selectedStock.value) return;
-  const avg = selectedStock.value.averageCost || 0;
+  const avg = selectedStock.value.shares > 0 ? selectedStock.value.costBasis / selectedStock.value.shares : 0;
   const shs = selectedStock.value.shares || 0;
   
-  targetPercent.value = pct;
-  const price = avg * (1 + pct / 100);
-  targetPrice.value = round2(price);
-  targetProfit.value = round2(shs * (price - avg));
+  targetPercent.value = Math.max(-100, pct);
+  const price = Math.max(0.01, round2(avg * (1 + targetPercent.value / 100)));
+  targetPrice.value = price;
+  targetProfit.value = round2(shs * price - selectedStock.value.costBasis);
 };
 
 // Update derived values from target price
 const updateFromPrice = (price) => {
   if (!selectedStock.value) return;
-  const avg = selectedStock.value.averageCost || 0;
+  const avg = selectedStock.value.shares > 0 ? selectedStock.value.costBasis / selectedStock.value.shares : 0;
   const shs = selectedStock.value.shares || 0;
 
+  price = Math.max(0.01, round2(price));
   targetPrice.value = price;
   if (avg > 0) {
     targetPercent.value = round2(((price - avg) / avg) * 100);
   } else {
     targetPercent.value = 0;
   }
-  targetProfit.value = round2(shs * (price - avg));
+  targetProfit.value = round2(shs * price - selectedStock.value.costBasis);
 };
 
 // Update derived values from target profit in dollars
 const updateFromProfit = (profit) => {
   if (!selectedStock.value) return;
-  const avg = selectedStock.value.averageCost || 0;
+  const avg = selectedStock.value.shares > 0 ? selectedStock.value.costBasis / selectedStock.value.shares : 0;
   const shs = selectedStock.value.shares || 0;
 
-  targetProfit.value = profit;
-  if (shs > 0) {
-    const price = avg + (profit / shs);
-    targetPrice.value = round2(price);
-    if (avg > 0) {
-      targetPercent.value = round2(((price - avg) / avg) * 100);
-    }
-  }
+  if (shs > 0) updateFromPrice(avg + profit / shs);
 };
 
 // When selected stock changes, initialize simulation to default +10%
@@ -133,13 +127,13 @@ const marketDiff = computed(() => {
 const scenarioSteps = [-15, -10, -5, 0, 5, 10, 15, 20, 25, 30, 50, 100];
 const scenarioMatrix = computed(() => {
   if (!selectedStock.value) return [];
-  const avg = selectedStock.value.averageCost || 0;
+  const avg = selectedStock.value.shares > 0 ? selectedStock.value.costBasis / selectedStock.value.shares : 0;
   const shs = selectedStock.value.shares || 0;
   const current = selectedStock.value.currentPrice || 0;
 
   return scenarioSteps.map(pct => {
     const price = round2(avg * (1 + pct / 100));
-    const profit = round2(shs * (price - avg));
+    const profit = round2(shs * price - selectedStock.value.costBasis);
     const cash = round2(shs * price);
     const mktDiffPct = current > 0 ? ((price - current) / current) * 100 : 0;
     const isCurrentActive = Math.abs(targetPercent.value - pct) < 0.01;
@@ -153,6 +147,18 @@ const scenarioMatrix = computed(() => {
       isActive: isCurrentActive
     };
   });
+});
+
+const priceMarkers = computed(() => {
+  if (!selectedStock.value) return [];
+  const items = [
+    { label: 'Cost / share', value: selectedStock.value.costBasis / selectedStock.value.shares, color: '#94a3b8' },
+    { label: 'Market', value: selectedStock.value.currentPrice, color: '#22d3ee' },
+    { label: 'Target', value: targetPrice.value, color: '#a5b4fc' }
+  ];
+  const min = Math.min(...items.map(item => item.value));
+  const max = Math.max(...items.map(item => item.value));
+  return items.sort((a, b) => a.value - b.value).map(item => ({ ...item, x: 25 + (item.value - min) / (max - min || 1) * 450 }));
 });
 
 // Formatters
@@ -181,20 +187,6 @@ const formatPercent = (val) => {
     <!-- Header Title Banner -->
     <div class="card sim-header-card fade-in-up">
       <div class="sim-header-content">
-        <div class="sim-header-title-group">
-          <div class="sim-icon-box">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="8" x2="12" y2="12"></line>
-              <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
-          </div>
-          <div>
-            <h1 class="sim-main-title">Sell & Profit Target Simulator</h1>
-            <p class="sim-subtitle">คำนวณและจำลองจุดขายหุ้น วางแผนราคาเป้าหมาย (Target Price) และจุดตัดขาดทุน (Stop Loss) แบบ 100% ของพอร์ต</p>
-          </div>
-        </div>
-
         <!-- Stock Selector Dropdown -->
         <div v-if="ownedStocks.length > 0" class="sim-selector-group">
           <label class="form-label" style="margin-bottom: 0.35rem;">Choose Asset to Simulate</label>
@@ -204,6 +196,7 @@ const formatPercent = (val) => {
             </option>
           </select>
         </div>
+        <p class="sim-subtitle">จำลองขายหุ้นที่เลือกทั้งหมด · ผลลัพธ์ก่อนค่าธรรมเนียมขาย</p>
       </div>
     </div>
 
@@ -236,7 +229,7 @@ const formatPercent = (val) => {
 
           <div class="snapshot-metric">
             <span class="snapshot-label">Current Market Price</span>
-            <span class="snapshot-val live-price-col">{{ formatCurrency(selectedStock.currentPrice) }}</span>
+            <span class="snapshot-val live-price-col">{{ formatCurrency(selectedStock.currentPrice) }}</span><small v-if="selectedStock.priceSource === 'cost-fallback'" class="muted">Estimated using average cost</small>
           </div>
 
           <div class="snapshot-metric">
@@ -251,8 +244,28 @@ const formatPercent = (val) => {
         </div>
       </div>
 
+      <!-- Interactive 2-Way Calculator Form -->
+      <div class="sim-grid-two-col">
+        <!-- Input Panel -->
+        <div class="card sim-calculator-card fade-in-up">
+          <h2 class="section-title">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="2" width="16" height="20" rx="2"></rect>
+              <line x1="8" y1="6" x2="16" y2="6"></line>
+              <line x1="16" y1="14" x2="16" y2="18"></line>
+              <path d="M16 10h.01"></path>
+              <path d="M12 10h.01"></path>
+              <path d="M8 10h.01"></path>
+              <path d="M12 14h.01"></path>
+              <path d="M8 14h.01"></path>
+              <path d="M12 18h.01"></path>
+              <path d="M8 18h.01"></path>
+            </svg>
+            Interactive Target Planner
+          </h2>
+
       <!-- Quick Preset Buttons -->
-      <div class="card presets-card fade-in-up">
+      <div class="presets-card inline-presets">
         <div class="presets-header">
           <div class="presets-title">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -276,26 +289,6 @@ const formatPercent = (val) => {
           </button>
         </div>
       </div>
-
-      <!-- Interactive 2-Way Calculator Form -->
-      <div class="sim-grid-two-col">
-        <!-- Input Panel -->
-        <div class="card sim-calculator-card fade-in-up">
-          <h2 class="section-title">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="4" y="2" width="16" height="20" rx="2"></rect>
-              <line x1="8" y1="6" x2="16" y2="6"></line>
-              <line x1="16" y1="14" x2="16" y2="18"></line>
-              <path d="M16 10h.01"></path>
-              <path d="M12 10h.01"></path>
-              <path d="M8 10h.01"></path>
-              <path d="M12 14h.01"></path>
-              <path d="M8 14h.01"></path>
-              <path d="M12 18h.01"></path>
-              <path d="M8 18h.01"></path>
-            </svg>
-            Interactive Target Planner
-          </h2>
 
           <div class="sim-fields">
             <!-- 1. Target Percent -->
@@ -368,6 +361,11 @@ const formatPercent = (val) => {
             Simulation Outcome
           </h2>
 
+          <div class="price-comparison">
+            <svg viewBox="0 0 500 40" role="img" aria-label="Cost, market and target price comparison"><line x1="25" x2="475" y1="20" y2="20" stroke="#475569" stroke-width="3"/><circle v-for="marker in priceMarkers" :key="marker.label" :cx="marker.x" cy="20" r="7" :fill="marker.color"><title>{{ marker.label }}: {{ formatCurrency(marker.value) }}</title></circle></svg>
+            <div class="price-marker-labels"><div v-for="marker in priceMarkers" :key="marker.label" :style="{color:marker.color}"><small>{{ marker.label }}</small><strong>{{ formatCurrency(marker.value) }}</strong></div></div>
+          </div>
+
           <div class="outcome-cards-grid">
             <!-- Target Selling Price -->
             <div class="outcome-card">
@@ -380,12 +378,12 @@ const formatPercent = (val) => {
             <div class="outcome-card">
               <span class="outcome-label">Total Cash Proceeds</span>
               <div class="outcome-value">{{ formatCurrency(totalProceeds) }}</div>
-              <span class="outcome-sub">เงินสดรับจากการขาย 100%</span>
+              <span class="outcome-sub">เงินขายหุ้นที่เลือกทั้งหมด ก่อนค่าธรรมเนียม</span>
             </div>
 
             <!-- Realized Profit / Loss -->
             <div class="outcome-card" :class="targetProfit >= 0 ? 'card-success-border' : 'card-danger-border'">
-              <span class="outcome-label">Expected Net Profit</span>
+              <span class="outcome-label">Expected P/L (before sell fees)</span>
               <div 
                 class="outcome-value" 
                 :class="targetProfit >= 0 ? 'pl-positive' : 'pl-negative'"
@@ -469,7 +467,7 @@ const formatPercent = (val) => {
                 <th>Scenario</th>
                 <th class="text-right">Target Price</th>
                 <th class="text-right">Total Cash Inflow</th>
-                <th class="text-right">Net Profit / Loss</th>
+                <th class="text-right">P/L before sell fees</th>
                 <th class="text-right">Distance from Market</th>
                 <th class="text-center">Action</th>
               </tr>
@@ -988,4 +986,26 @@ const formatPercent = (val) => {
   color: #ffffff;
   font-weight: 700;
 }
+</style>
+
+<style scoped>
+.sim-header-card { padding:1.25rem; }
+.sim-body { gap:1rem; }
+.sim-main-title { font-size:1.3rem; }
+.price-comparison { margin-bottom:1rem; background:#ffffff04; padding:.75rem; border-radius:10px; }
+.price-comparison svg { display:block; width:100%; }
+.price-marker-labels { display:grid; grid-template-columns:repeat(3,1fr); gap:.5rem; text-align:center; }
+.price-marker-labels small, .price-marker-labels strong { display:block; font-size:.75rem; }
+.price-marker-labels strong { font-size:.95rem; margin-top:.25rem; }
+</style>
+
+<style scoped>
+.sim-header-card { margin-bottom:1rem; }
+.sim-header-content { gap:1rem; }
+.sim-selector-group { min-width:0; width:min(100%,420px); }
+.inline-presets { padding:.75rem; border-radius:10px; margin-bottom:1rem; }
+.inline-presets .presets-desc { display:none; }
+.inline-presets .presets-header { margin-bottom:.6rem; }
+.inline-presets .preset-chip { font-size:.75rem; padding:.35rem .55rem; }
+.snapshot-metrics-grid { gap:1.25rem; }
 </style>

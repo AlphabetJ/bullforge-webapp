@@ -16,7 +16,11 @@ export async function GET() {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { symbol, type, shares, price, fees, date } = body;
+    const { symbol, type, shares, price, fees, date, source = 'TRADE' } = body;
+
+    if (!['TRADE', 'DIVIDEND_REINVESTMENT'].includes(source) || (source === 'DIVIDEND_REINVESTMENT' && type !== 'BUY')) {
+      return NextResponse.json({ error: 'Dividend reinvestment must be a BUY transaction.' }, { status: 400 });
+    }
 
     // Validate request inputs
     if (!symbol || typeof symbol !== 'string' || symbol.trim() === '') {
@@ -94,12 +98,13 @@ export async function POST(request) {
       shares: numShares,
       price: numPrice,
       fees: numFees,
-      date: txDate
+      date: txDate,
+      source
     };
 
     await runQuery(
-      `INSERT INTO transactions (id, symbol, type, shares, price, fees, date) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [newTx.id, newTx.symbol, newTx.type, newTx.shares, newTx.price, newTx.fees, newTx.date]
+      `INSERT INTO transactions (id, symbol, type, shares, price, fees, date, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [newTx.id, newTx.symbol, newTx.type, newTx.shares, newTx.price, newTx.fees, newTx.date, newTx.source]
     );
 
     return NextResponse.json(newTx, { status: 201 });

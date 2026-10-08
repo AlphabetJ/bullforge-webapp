@@ -117,3 +117,15 @@ The script will:
 - Parse the "TRADE RECORDS" section from all CSV files.
 - Automatically check for existing transaction duplicates in the database based on date, symbol, type, shares, and price.
 - Skip duplicate entries and import new transactions seamlessly.
+
+### Portfolio metric definitions
+
+- **Holdings market value** is the current value of open positions, excluding unrecorded cash. Missing quotes use average cost and are visibly marked as estimates.
+- **Open-position cost** is remaining average cost basis, including recorded purchase fees. Allocation defaults to market value; the chart can switch to cost basis.
+- **Realized sale P/L** includes every recorded sale in the tracked period, including ETF/fund and fractional-unit sales. Net sale proceeds (after sell fees) minus the sold units' average cost basis gives each sale's P/L. Each event is rounded to cents before aggregation so summaries match the ledger.
+- **Reinvested dividends** are recorded separately as income and also create cost basis for the new units. A later sale realizes only the change from that basis. Reinvestments are never subtracted from sale P/L.
+- **Recorded realized income** combines sale P/L and recorded reinvested dividends. It does not include unrecorded cash dividends or unrecorded withholding taxes.
+- Imported legacy JEPQ purchases with `csv_` IDs, fewer than one unit and zero fees are **estimated** dividend reinvestments. The original entries are preserved. New transactions explicitly record `source: TRADE` or `DIVIDEND_REINVESTMENT`, selected using the DRIP checkbox on the buy form; ordinary fractional purchases are not inferred as dividends.
+- The existing tracking boundary starts at the NVDA purchase of 9 shares on 2025-11-07 when present. The actual start date is displayed in the UI. Transactions before the boundary remain in the activity ledger but do not contribute to portfolio metrics.
+
+The database adds a nullable `source` column automatically while preserving existing transaction rows. Before this update, a local backup was saved as `backend/data/portfolio.before-income-ui.db` (ignored by Git). Calculation checks can be run with `node --test backend/tests/*.test.mjs`.

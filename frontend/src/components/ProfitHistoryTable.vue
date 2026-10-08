@@ -1,364 +1,83 @@
 <script setup>
 import { ref, computed } from 'vue';
-
-const props = defineProps({
-  profitHistory: {
-    type: Array,
-    required: true
-  }
-});
-
-// Search filters
-const searchQuery = ref('');
-
-// Sorting
+import { currency, percent, shares, dateLabel, monthLabel } from '../utils/format';
+const props = defineProps({ profitHistory: { type: Array, required: true }, dividendHistory: { type: Array, default: () => [] }, summary: { type: Object, required: true } });
+const month = ref('All');
+const search = ref('');
 const sortBy = ref('lastTransactionDate');
-const sortDesc = ref(true);
-
-const handleSort = (field) => {
-  if (sortBy.value === field) {
-    sortDesc.value = !sortDesc.value;
-  } else {
-    sortBy.value = field;
-    sortDesc.value = false;
-  }
-};
-
-const formatCurrency = (val) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD'
-  }).format(val || 0);
-};
-
-const formatPercent = (val) => {
-  return `${val >= 0 ? '+' : ''}${(val || 0).toFixed(2)}%`;
-};
-
-const formatShares = (val) => {
-  const num = typeof val === 'number' ? val : Number(val) || 0;
-  if (num > 0 && num < 0.01) {
-    return '< 0.01';
-  }
-  return num.toFixed(2);
-};
-
-const formatDate = (dateStr) => {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  const day = String(d.getUTCDate()).padStart(2, '0');
-  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const year = d.getUTCFullYear();
-  return `${day}/${month}/${year}`;
-};
-
-// Summary metrics
-const totalRealizedPL = computed(() => {
-  return props.profitHistory.reduce((sum, item) => sum + item.realizedPL, 0);
-});
-
-const winRate = computed(() => {
-  if (props.profitHistory.length === 0) return 0;
-  const wins = props.profitHistory.filter(item => item.realizedPL > 0).length;
-  return (wins / props.profitHistory.length) * 100;
-});
-
-// Group by symbol to compute aggregated performance for the top cards
-const symbolAggregates = computed(() => {
+const descending = ref(true);
+const months = computed(() => [...new Set([...props.profitHistory.map(event => event.lastTransactionDate.slice(0, 7)), ...props.dividendHistory.map(event => event.date.slice(0, 7))])].sort().reverse());
+const matches = (symbol, date) => (!search.value.trim() || symbol.includes(search.value.trim().toUpperCase())) && (month.value === 'All' || date.startsWith(month.value));
+const sales = computed(() => props.profitHistory.filter(event => matches(event.symbol, event.lastTransactionDate)));
+const dividends = computed(() => props.dividendHistory.filter(event => matches(event.symbol, event.date)));
+const realized = computed(() => month.value === 'All' && !search.value.trim() ? props.summary.totalRealizedPL : sales.value.reduce((sum, event) => sum + event.realizedPL, 0));
+const dividendIncome = computed(() => month.value === 'All' && !search.value.trim() ? props.summary.totalDividendIncome || 0 : dividends.value.reduce((sum, event) => sum + event.amount, 0));
+const wins = computed(() => sales.value.filter(event => event.realizedPL > 0).length);
+const winRate = computed(() => sales.value.length ? wins.value / sales.value.length * 100 : 0);
+const inferred = computed(() => dividends.value.some(event => event.inferred));
+const jepqPL = computed(() => sales.value.filter(event => event.symbol === 'JEPQ').reduce((sum, event) => sum + event.realizedPL, 0));
+const ranked = computed(() => {
   const groups = {};
-  props.profitHistory.forEach(item => {
-    if (!groups[item.symbol]) {
-      groups[item.symbol] = {
-        symbol: item.symbol,
-        realizedPL: 0,
-        totalInvested: 0
-      };
-    }
-    groups[item.symbol].realizedPL += item.realizedPL;
-    groups[item.symbol].totalInvested += item.totalInvested;
-  });
-
-  return Object.values(groups).map(g => ({
-    symbol: g.symbol,
-    realizedPL: g.realizedPL,
-    realizedPLPercent: g.totalInvested > 0 ? (g.realizedPL / g.totalInvested) * 100 : 0
-  }));
+  for (const event of sales.value) groups[event.symbol] = (groups[event.symbol] || 0) + event.realizedPL;
+  return Object.entries(groups).sort((a, b) => b[1] - a[1]);
 });
-
-const bestTrade = computed(() => {
-  if (symbolAggregates.value.length === 0) return null;
-  return [...symbolAggregates.value].sort((a, b) => b.realizedPL - a.realizedPL)[0];
-});
-
-const worstTrade = computed(() => {
-  if (symbolAggregates.value.length === 0) return null;
-  return [...symbolAggregates.value].sort((a, b) => a.realizedPL - b.realizedPL)[0];
-});
-
-// Processed list (Search, Sort)
-const processedHistory = computed(() => {
-  let list = [...props.profitHistory];
-
-  // Search filter
-  if (searchQuery.value) {
-    const q = searchQuery.value.toUpperCase().trim();
-    list = list.filter(item => item.symbol.includes(q));
-  }
-
-  // Sorting
-  list.sort((a, b) => {
-    let valA = a[sortBy.value];
-    let valB = b[sortBy.value];
-
-    if (typeof valA === 'string') {
-      valA = valA.toLowerCase();
-      valB = valB.toLowerCase();
-    }
-
-    if (valA < valB) return sortDesc.value ? 1 : -1;
-    if (valA > valB) return sortDesc.value ? -1 : 1;
-    return 0;
-  });
-
-  return list;
+const rows = computed(() => [...sales.value].sort((a, b) => {
+  const comparison = typeof a[sortBy.value] === 'string' ? a[sortBy.value].localeCompare(b[sortBy.value]) : a[sortBy.value] - b[sortBy.value];
+  return descending.value ? -comparison : comparison;
+}));
+function sort(key) { descending.value = sortBy.value === key ? !descending.value : true; sortBy.value = key; }
+const columns = [{key:'symbol',label:'Asset'},{key:'sharesSold',label:'Shares sold'},{key:'avgBuyPrice',label:'Avg cost'},{key:'avgSellPrice',label:'Sell price'},{key:'totalInvested',label:'Cost basis'},{key:'totalProceeds',label:'Net proceeds'},{key:'totalFees',label:'Sell fees'},{key:'realizedPL',label:'Realized P/L'},{key:'lastTransactionDate',label:'Sale date'}];
+const trend = computed(() => {
+  const events = [...sales.value].sort((a, b) => a.lastTransactionDate.localeCompare(b.lastTransactionDate));
+  if (!events.length) return null;
+  const start = Date.parse(events[0].lastTransactionDate) - 86400000;
+  const end = Date.parse(events.at(-1).lastTransactionDate);
+  let cumulative = 0;
+  const values = [{ date: start, amount: 0 }, ...events.map(event => ({date: Date.parse(event.lastTransactionDate), amount: cumulative += event.realizedPL}))];
+  const min = Math.min(0, ...values.map(event => event.amount));
+  const max = Math.max(0, ...values.map(event => event.amount));
+  const range = max - min || 1;
+  const points = values.map(event => ({...event, x: 35 + (event.date - start) / Math.max(1, end - start) * 530, y: 145 - (event.amount - min) / range * 115}));
+  return { points, path: points.map((p, i) => `${i ? 'L' : 'M'}${p.x},${p.y}`).join(' '), baseline: 145 - (0 - min) / range * 115, min, max, first: events[0].lastTransactionDate, last: events.at(-1).lastTransactionDate };
 });
 </script>
-
 <template>
   <div class="profit-history-container">
-    <!-- performance highlights -->
-    <section class="grid-summary">
-      <!-- Total Realized P&L Card -->
-      <div class="card summary-card" :class="totalRealizedPL >= 0 ? 'success' : 'danger'">
-        <div>
-          <div class="summary-label">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-            Net Realized Profit
-          </div>
-          <div class="summary-value" :class="totalRealizedPL >= 0 ? 'pl-positive' : 'pl-negative'">
-            {{ formatCurrency(totalRealizedPL) }}
-          </div>
-        </div>
-        <div class="summary-change neutral">
-          From {{ profitHistory.length }} closed transactions
-        </div>
-      </div>
-
-      <!-- Win Rate Card -->
-      <div class="card summary-card" :class="winRate >= 50 ? 'success' : 'warning'">
-        <div>
-          <div class="summary-label">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-            Win Rate
-          </div>
-          <div class="summary-value" :class="winRate >= 50 ? 'pl-positive' : 'pl-negative'">
-            {{ winRate.toFixed(1) }}%
-          </div>
-        </div>
-        <div class="summary-change neutral">
-          {{ profitHistory.filter(item => item.realizedPL > 0).length }} profitable / {{ profitHistory.length }} total
-        </div>
-      </div>
-
-      <!-- Best Performing Trade -->
-      <div v-if="bestTrade" class="card summary-card success">
-        <div>
-          <div class="summary-label">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-            Best Performance
-          </div>
-          <div class="summary-value pl-positive">
-            {{ formatCurrency(bestTrade.realizedPL) }}
-          </div>
-        </div>
-        <div class="summary-change neutral" style="display: flex; gap: 0.35rem; align-items: center;">
-          <span class="stock-symbol-badge" style="font-size: 0.7rem; padding: 0.1rem 0.3rem;">{{ bestTrade.symbol }}</span>
-          ROI: {{ formatPercent(bestTrade.realizedPLPercent) }}
-        </div>
-      </div>
-
-      <!-- Worst Performing Trade -->
-      <div v-if="worstTrade" class="card summary-card danger">
-        <div>
-          <div class="summary-label">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
-            Worst Performance
-          </div>
-          <div class="summary-value pl-negative">
-            {{ formatCurrency(worstTrade.realizedPL) }}
-          </div>
-        </div>
-        <div class="summary-change neutral" style="display: flex; gap: 0.35rem; align-items: center;">
-          <span class="stock-symbol-badge" style="font-size: 0.7rem; padding: 0.1rem 0.3rem;">{{ worstTrade.symbol }}</span>
-          ROI: {{ formatPercent(worstTrade.realizedPLPercent) }}
-        </div>
-      </div>
+    <div class="panel-heading returns-filters"><div><h2>Realized returns</h2><p class="muted">{{ monthLabel(month) }} · {{ sales.length }} sales · amounts after recorded transaction fees</p></div><div class="filters-row"><input v-model="search" class="form-control search-input" placeholder="Search asset…" aria-label="Search return history by asset" /><select v-model="month" class="compact-select" aria-label="Returns period"><option value="All">All time</option><option v-for="key in months" :key="key" :value="key">{{ monthLabel(key) }}</option></select></div></div>
+    <section class="grid-summary metrics-four">
+      <div class="card summary-card"><span class="summary-label">Realized sale P/L</span><strong class="summary-value" :class="realized >= 0 ? 'pl-positive' : 'pl-negative'">{{ currency(realized) }}</strong><small class="muted">All asset sales, including JEPQ</small></div>
+      <div class="card summary-card"><span class="summary-label">Reinvested dividends</span><strong class="summary-value">{{ currency(dividendIncome) }}</strong><small class="muted">{{ inferred ? 'Estimated from legacy imports' : 'Explicitly recorded reinvestments' }}</small></div>
+      <div class="card summary-card"><span class="summary-label">Recorded realized income</span><strong class="summary-value" :class="realized + dividendIncome >= 0 ? 'pl-positive' : 'pl-negative'">{{ currency(realized + dividendIncome) }}</strong><small class="muted">Sale P/L + reinvested dividends{{ inferred ? ' · estimated' : '' }}</small></div>
+      <div class="card summary-card"><span class="summary-label">Profitable sales</span><strong class="summary-value">{{ sales.length ? winRate.toFixed(1) + '%' : '—' }}</strong><small class="muted">{{ wins }} profitable / {{ sales.length }} sales</small></div>
     </section>
-
-    <!-- Table Card -->
-    <div class="card fade-in-up">
-      <div class="table-header-controls">
-        <h2 class="section-title" style="margin-bottom: 0; border-bottom: none; padding-bottom: 0;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-          Profit History
-        </h2>
-
-        <!-- Search Section -->
-        <div class="filters-row">
-          <input 
-            v-model="searchQuery" 
-            type="text" 
-            class="form-control search-input" 
-            placeholder="Search stock..." 
-          />
-        </div>
-      </div>
-
-      <div v-if="processedHistory.length === 0" class="empty-state">
-        <div class="empty-state-icon">📈</div>
-        <div class="empty-state-title">No Trade History Found</div>
-        <p v-if="searchQuery">No results match your search filters.</p>
-        <p v-else>Stocks will appear here once they have both BUY and SELL transactions recorded.</p>
-      </div>
-
-      <div v-else class="table-container" style="max-height: 600px; overflow-y: auto;">
-        <table>
-          <thead>
-            <tr>
-              <th @click="handleSort('symbol')" class="sortable">
-                Stock
-                <span v-if="sortBy === 'symbol'">{{ sortDesc ? '▼' : '▲' }}</span>
-              </th>
-              <th @click="handleSort('sharesSold')" class="sortable text-right">
-                Shares Sold
-                <span v-if="sortBy === 'sharesSold'">{{ sortDesc ? '▼' : '▲' }}</span>
-              </th>
-              <th @click="handleSort('avgBuyPrice')" class="sortable text-right">
-                Avg Buy
-                <span v-if="sortBy === 'avgBuyPrice'">{{ sortDesc ? '▼' : '▲' }}</span>
-              </th>
-              <th @click="handleSort('avgSellPrice')" class="sortable text-right">
-                Avg Sell
-                <span v-if="sortBy === 'avgSellPrice'">{{ sortDesc ? '▼' : '▲' }}</span>
-              </th>
-              <th @click="handleSort('totalInvested')" class="sortable text-right">
-                Total Cost
-                <span v-if="sortBy === 'totalInvested'">{{ sortDesc ? '▼' : '▲' }}</span>
-              </th>
-              <th @click="handleSort('totalProceeds')" class="sortable text-right">
-                Net Proceeds
-                <span v-if="sortBy === 'totalProceeds'">{{ sortDesc ? '▼' : '▲' }}</span>
-              </th>
-              <th @click="handleSort('totalFees')" class="sortable text-right">
-                Fees
-                <span v-if="sortBy === 'totalFees'">{{ sortDesc ? '▼' : '▲' }}</span>
-              </th>
-              <th @click="handleSort('realizedPL')" class="sortable text-right">
-                Gain/Loss
-                <span v-if="sortBy === 'realizedPL'">{{ sortDesc ? '▼' : '▲' }}</span>
-              </th>
-              <th @click="handleSort('realizedPLPercent')" class="sortable text-right">
-                ROI
-                <span v-if="sortBy === 'realizedPLPercent'">{{ sortDesc ? '▼' : '▲' }}</span>
-              </th>
-              <th @click="handleSort('lastTransactionDate')" class="sortable text-right">
-                Closed Date
-                <span v-if="sortBy === 'lastTransactionDate'">{{ sortDesc ? '▼' : '▲' }}</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in processedHistory" :key="item.id">
-              <td>
-                <span class="stock-symbol-badge">{{ item.symbol }}</span>
-              </td>
-              <td class="text-right font-semibold">{{ formatShares(item.sharesSold) }}</td>
-              <td class="text-right">{{ formatCurrency(item.avgBuyPrice) }}</td>
-              <td class="text-right">{{ formatCurrency(item.avgSellPrice) }}</td>
-              <td class="text-right">{{ formatCurrency(item.totalInvested) }}</td>
-              <td class="text-right">{{ formatCurrency(item.totalProceeds) }}</td>
-              <td class="text-right text-muted">{{ formatCurrency(item.totalFees) }}</td>
-              <td class="text-right font-semibold" :class="item.realizedPL >= 0 ? 'pl-positive' : 'pl-negative'">
-                {{ formatCurrency(item.realizedPL) }}
-              </td>
-              <td class="text-right font-semibold" :class="item.realizedPLPercent >= 0 ? 'pl-positive' : 'pl-negative'">
-                {{ formatPercent(item.realizedPLPercent) }}
-              </td>
-              <td class="text-right text-muted" style="font-size: 0.85rem;">{{ formatDate(item.lastTransactionDate) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    <details class="card income-explanation">
+      <summary>วิธีคำนวณกำไรจากการขายและปันผล <span v-if="inferred" class="muted">· มีรายการปันผลเก่าที่เป็นค่าประมาณ</span></summary>
+      <p>กำไรจากการขาย = เงินขายหลังค่าธรรมเนียม − ต้นทุนเฉลี่ยของหน่วยที่ขาย รวมการขายกองทุนและเศษหน่วย JEPQ ({{ currency(jepqPL) }} ในช่วงนี้) ส่วนปันผลซื้อซ้ำเพิ่มต้นทุนของหน่วยใหม่ เมื่อขายจะนับเฉพาะกำไร/ขาดทุนเหนือจากต้นทุนนั้น จึงไม่หักปันผลออกจากกำไรการขายและไม่นับซ้ำ</p>
+      <p v-if="inferred" class="estimate-note">รายการเก่ายังไม่มีประเภทปันผล: ประมาณจากรายการนำเข้า JEPQ ที่ซื้อไม่ถึง 1 หน่วยและค่าธรรมเนียมเป็น 0 ตรวจรายละเอียดด้านล่างได้ เงินปันผลที่รับเป็นเงินสดและไม่ได้บันทึกยังไม่รวมในยอดนี้</p>
+      <p v-else class="muted">รวมเฉพาะปันผลซื้อซ้ำที่บันทึกไว้ ไม่รวมเงินปันผลรับเป็นเงินสดที่ไม่ได้บันทึก</p>
+    </details>
+    <div v-if="trend" class="card trend-card">
+      <div class="panel-heading"><div><h2>Cumulative sale P/L</h2><p class="muted">เฉพาะกำไรจากการขายในช่วงและสินทรัพย์ที่เลือก · ไม่รวมปันผล</p></div><strong :class="realized >= 0 ? 'pl-positive' : 'pl-negative'">{{ currency(realized) }}</strong></div>
+      <svg viewBox="0 0 600 170" role="img" aria-label="Cumulative realized sale profit chart" class="profit-trend"><line x1="35" x2="565" :y1="trend.baseline" :y2="trend.baseline" stroke="#94a3b8" stroke-dasharray="4 4" opacity=".4"/><path :d="trend.path" fill="none" :stroke="realized >= 0 ? '#34d399' : '#fb7185'" stroke-width="3"/><circle v-for="(point, index) in trend.points" :key="index" :cx="point.x" :cy="point.y" r="3" fill="#c7d2fe"><title>{{ new Date(point.date).toLocaleDateString('en-GB') }}: {{ currency(point.amount) }}</title></circle><text x="35" y="18" fill="#94a3b8" font-size="11">{{ currency(trend.max) }}</text><text x="35" y="165" fill="#94a3b8" font-size="11">{{ currency(trend.min) }}</text></svg>
+      <div class="trend-axis"><span>{{ dateLabel(trend.first) }}</span><span>{{ dateLabel(trend.last) }}</span></div>
+      <p v-if="ranked.length" class="muted">Highest total by asset: <strong>{{ ranked[0][0] }} {{ currency(ranked[0][1]) }}</strong> · Lowest total by asset: <strong>{{ ranked.at(-1)[0] }} {{ currency(ranked.at(-1)[1]) }}</strong></p>
     </div>
+    <div class="card">
+      <div class="panel-heading"><div><h2>Sale history</h2><p class="muted">Average cost includes buy fees · net proceeds deduct sell fees</p></div></div>
+      <div v-if="!rows.length" class="empty-state">No sales match this period or asset.</div>
+      <div v-else class="table-container ledger-table"><table><thead><tr><th v-for="column in columns" :key="column.key" :class="{'text-right': !['symbol','lastTransactionDate'].includes(column.key)}" :aria-sort="sortBy === column.key ? (descending ? 'descending' : 'ascending') : 'none'"><button class="sort-button" @click="sort(column.key)">{{ column.label }} <span v-if="sortBy === column.key">{{ descending ? '↓' : '↑' }}</span></button></th></tr></thead><tbody><tr v-for="event in rows" :key="event.id"><td><span class="stock-symbol-badge">{{ event.symbol }}</span></td><td class="text-right">{{ shares(event.sharesSold) }}</td><td class="text-right">{{ currency(event.avgBuyPrice) }}</td><td class="text-right">{{ currency(event.avgSellPrice) }}</td><td class="text-right">{{ currency(event.totalInvested) }}</td><td class="text-right">{{ currency(event.totalProceeds) }}</td><td class="text-right">{{ currency(event.totalFees) }}</td><td class="text-right" :class="event.realizedPL >= 0 ? 'pl-positive' : 'pl-negative'">{{ currency(event.realizedPL) }}<small class="table-subline" style="color:inherit">{{ percent(event.realizedPLPercent) }}</small></td><td>{{ dateLabel(event.lastTransactionDate) }}</td></tr></tbody></table></div>
+    </div>
+    <details class="card dividend-details"><summary>Dividend reinvestment records · {{ dividends.length }} entries · {{ currency(dividendIncome) }}</summary><p class="muted">มูลค่าที่นำไปลงทุนซ้ำ (รวมค่าธรรมเนียมที่บันทึกไว้) ไม่ใช่ยอดปันผลก่อนหักภาษี</p><div v-if="!dividends.length" class="empty-state">No recorded reinvestments in this period.</div><div v-else class="table-container"><table><thead><tr><th>Date</th><th>Asset</th><th class="text-right">Shares</th><th class="text-right">Reinvested amount</th><th>Source</th></tr></thead><tbody><tr v-for="event in dividends" :key="event.id"><td>{{ dateLabel(event.date) }}</td><td>{{ event.symbol }}</td><td class="text-right">{{ shares(event.shares) }}</td><td class="text-right">{{ currency(event.amount) }}</td><td>{{ event.inferred ? 'Estimated legacy import' : 'Recorded dividend reinvestment' }}</td></tr></tbody></table></div></details>
   </div>
 </template>
-
 <style scoped>
-.table-header-controls {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  padding-bottom: 0.75rem;
-}
-
-.filters-row {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-}
-
-.search-input {
-  max-width: 200px;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.85rem;
-  border-radius: var(--radius-sm);
-}
-
-.filter-select {
-  max-width: 150px;
-  padding: 0.5rem 2rem 0.5rem 0.75rem;
-  font-size: 0.85rem;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-
-.sortable {
-  cursor: pointer;
-  user-select: none;
-  transition: color var(--transition-fast);
-}
-
-.sortable:hover {
-  color: var(--text-primary);
-}
-
-.badge-success-dim {
-  background: rgba(16, 185, 129, 0.1);
-  color: var(--success);
-  border: 1px solid rgba(16, 185, 129, 0.2);
-}
-
-.badge-danger-dim {
-  background: rgba(244, 63, 94, 0.1);
-  color: var(--danger);
-  border: 1px solid rgba(244, 63, 94, 0.2);
-}
-
-@media (max-width: 768px) {
-  .table-header-controls {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .filters-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .search-input, .filter-select {
-    max-width: 100%;
-  }
-}
+.profit-history-container > .card { margin-bottom:1rem; }
+.filters-row { display:flex; gap:.75rem; flex-wrap:wrap; }
+.search-input { max-width:200px; padding:.5rem .75rem; }
+.income-explanation summary { cursor:pointer; font-size:.85rem; font-weight:600; }
+.income-explanation p { font-size:.85rem; color:var(--text-secondary); margin:.5rem 0 0; line-height:1.7; }
+.income-explanation .estimate-note { color:#fbbf24; }
+.profit-trend { width:100%; max-height:210px; display:block; }
+.trend-axis { display:flex; justify-content:space-between; font-size:.75rem; color:var(--text-secondary); margin:.3rem 0 .7rem; }
+.dividend-details summary { cursor:pointer; font-weight:600; }
 </style>

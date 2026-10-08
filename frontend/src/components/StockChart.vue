@@ -1,91 +1,27 @@
 <script setup>
-import { computed } from 'vue';
-
-const props = defineProps({
-  holdings: {
-    type: Array,
-    required: true
-  },
-  totalValue: {
-    type: Number,
-    required: true
-  }
-});
-
-// Color palette for assets
-const COLORS = [
-  '#6366f1', // Indigo
-  '#06b6d4', // Cyan
-  '#f59e0b', // Amber
-  '#a855f7', // Purple
-  '#f43f5e', // Rose
-  '#10b981', // Emerald
-  '#3b82f6', // Blue
-  '#ec4899', // Pink
-  '#14b8a6', // Teal
-];
-
-// Slice top 5 holdings by weight descending (they are already sorted by the backend)
-const topFiveHoldings = computed(() => {
-  return props.holdings.slice(0, 5);
-});
-
-const getColor = (index) => {
-  return COLORS[index % COLORS.length];
-};
-
-const formatCurrency = (val) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD'
-  }).format(val);
-};
+import { computed, ref } from 'vue';
+import { currency } from '../utils/format';
+const props = defineProps({ holdings: { type: Array, required: true } });
+const basis = ref('market');
+const colors = ['#818cf8', '#22d3ee', '#fbbf24', '#c084fc', '#fb7185', '#34d399'];
+const assets = computed(() => props.holdings.map(asset => ({ ...asset, allocation: basis.value === 'market' ? asset.weight : asset.costWeight, amount: basis.value === 'market' ? asset.currentValue : asset.costBasis })).sort((a, b) => b.allocation - a.allocation));
 </script>
-
 <template>
-  <div class="card fade-in-up">
-    <h2 class="section-title">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-      Asset Allocation (Top 5)
-    </h2>
-
-    <div v-if="holdings.length === 0" class="empty-state">
-      <div class="empty-state-icon">📊</div>
-      <div class="empty-state-title">No Assets Owned</div>
-      <p>Add buy transactions to see your asset allocation bar chart.</p>
-    </div>
-
-    <div v-else class="bar-chart-container" style="display: flex; flex-direction: column; gap: 1.25rem;">
-      <div 
-        v-for="(holding, index) in topFiveHoldings" 
-        :key="holding.symbol" 
-        class="bar-chart-row" 
-        style="display: flex; flex-direction: column; gap: 0.35rem;"
-      >
-        <div class="bar-chart-info" style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem;">
-          <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <span class="legend-color" :style="{ backgroundColor: getColor(index), width: '8px', height: '8px' }"></span>
-            <span class="stock-symbol-badge">{{ holding.symbol }}</span>
-            <span style="color: var(--text-secondary); font-size: 0.8rem;">(Cost Basis: {{ formatCurrency(holding.costBasis) }})</span>
-          </div>
-          <span class="font-semibold">{{ holding.weight }}%</span>
-        </div>
-        <!-- Progress track -->
-        <div class="progress-track" style="width: 100%; height: 10px; background: rgba(255, 255, 255, 0.05); border-radius: 5px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.03);">
-          <!-- Progress bar filled -->
-          <div 
-            class="progress-fill" 
-            :style="{ 
-              width: `${holding.weight}%`, 
-              backgroundColor: getColor(index), 
-              boxShadow: `0 0 10px ${getColor(index)}40`,
-              height: '100%',
-              borderRadius: '5px',
-              transition: 'width 0.8s ease'
-            }"
-          ></div>
-        </div>
+  <div class="card allocation-card">
+    <div class="panel-heading"><div><h2>Allocation</h2><p class="muted">All holdings · {{ basis === 'market' ? 'market value' : 'cost basis' }}</p></div><select v-model="basis" class="compact-select" aria-label="Allocation basis"><option value="market">Market</option><option value="cost">Cost</option></select></div>
+    <div v-if="!assets.length" class="empty-state">No assets to display.</div>
+    <div v-else class="allocation-list">
+      <div v-for="(asset, index) in assets" :key="asset.symbol">
+        <div class="allocation-label"><strong>{{ asset.symbol }}</strong><span>{{ asset.allocation.toFixed(2) }}%</span></div>
+        <div class="allocation-track"><div :style="{ width: `${asset.allocation}%`, background: colors[index % colors.length] }"></div></div>
+        <small class="muted">{{ currency(asset.amount) }}</small>
       </div>
     </div>
   </div>
 </template>
+<style scoped>
+.allocation-list { display:grid; gap:1rem; }
+.allocation-label { display:flex; justify-content:space-between; font-size:.9rem; }
+.allocation-track { height:8px; background:#ffffff0b; border-radius:8px; overflow:hidden; margin:.35rem 0 .2rem; }
+.allocation-track > div { height:100%; border-radius:8px; transition:width .2s; }
+</style>
