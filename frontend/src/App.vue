@@ -8,7 +8,7 @@ import SellSimulator from './components/SellSimulator.vue';
 import { currency, percent, shares, dateLabel, monthLabel } from './utils/format';
 const activeTab = ref('dashboard');
 const tabs = [{ id:'dashboard', label:'Dashboard' }, { id:'profit-history', label:'Profit History' }, { id:'transactions', label:'Transactions' }, { id:'simulator', label:'Sell Simulator' }];
-const titles = { dashboard:['Portfolio overview','Your holdings, current value and returns at a glance.'], 'profit-history':['Profit & income','Sale profits and reinvested dividends, with their definitions.'], transactions:['Transactions','Record activity and review your investment history.'], simulator:['Plan a sale','Explore target prices for a selected position.'] };
+const titles = { dashboard:['Portfolio overview','Your holdings, current value and returns at a glance.'], 'profit-history':['Profit & income','Review your realized returns and sale history.'], transactions:['Transactions','Record activity and review your investment history.'], simulator:['Plan a sale','Explore target prices for a selected position.'] };
 const loading = ref(false);
 const hasLoaded = ref(false);
 const error = ref('');
