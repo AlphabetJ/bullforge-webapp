@@ -1,28 +1,7 @@
 import { NextResponse } from 'next/server';
 import { allQuery } from '@/lib/db';
+import { fetchYahooPrice } from '@/lib/market-prices';
 
-
-
-async function fetchYahooPrice(symbol) {
-  try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      }
-    });
-    if (!res.ok) {
-      console.warn(`Yahoo Finance API returned status ${res.status} for ${symbol}`);
-      return null;
-    }
-    const data = await res.json();
-    const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
-    return typeof price === 'number' ? price : null;
-  } catch (error) {
-    console.error(`Error fetching price for ${symbol} from Yahoo Finance:`, error);
-    return null;
-  }
-}
 
 export async function GET() {
   try {
