@@ -3,6 +3,7 @@ import csv
 import sys
 import json
 import sqlite3
+from pathlib import Path
 
 def main():
     # Set encoding to UTF-8 for Thai text outputs
@@ -11,29 +12,14 @@ def main():
     except Exception:
         pass
 
-    raw_data_dir = "./raw_data"
-    if not os.path.exists(raw_data_dir):
-        raw_data_dir = "d:/Investment_Port_Project/raw_data"
+    project_dir = Path(__file__).resolve().parent.parent
+    raw_data_dir = project_dir / 'raw_data'
+    db_path = project_dir / 'backend' / 'data' / 'portfolio.db'
 
-    if not os.path.exists(raw_data_dir):
+    if not raw_data_dir.is_dir():
         print(f"Error: Raw data directory '{raw_data_dir}' not found.", file=sys.stderr)
         sys.exit(1)
-
-    # ค้นหาพาธของ SQLite database ของโปรเจกต์
-    db_paths = [
-        "./backend/data/portfolio.db",
-        "../backend/data/portfolio.db",
-        "d:/Investment_Port_Project/backend/data/portfolio.db"
-    ]
-    db_path = None
-    for path in db_paths:
-        if os.path.exists(os.path.dirname(path)):
-            db_path = path
-            break
-
-    if not db_path:
-        print("Error: Could not locate backend database directory.", file=sys.stderr)
-        sys.exit(1)
+    db_path.parent.mkdir(parents=True, exist_ok=True)
 
     transactions = []
 

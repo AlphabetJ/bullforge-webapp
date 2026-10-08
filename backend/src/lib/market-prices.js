@@ -13,18 +13,26 @@ async function requestYahooPrice(symbol) {
       cache: 'no-store',
       signal: AbortSignal.timeout(PRICE_TIMEOUT_MS),
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      }
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
     });
     if (!res.ok) {
-      console.warn(`Yahoo Finance API returned status ${res.status} for ${symbol}`);
+      console.warn(
+        `Yahoo Finance API returned status ${res.status} for ${symbol}`,
+      );
       return null;
     }
     const data = await res.json();
     const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
-    return typeof price === 'number' && Number.isFinite(price) && price > 0 ? price : null;
+    return typeof price === 'number' && Number.isFinite(price) && price > 0
+      ? price
+      : null;
   } catch (error) {
-    console.error(`Error fetching price for ${symbol} from Yahoo Finance:`, error);
+    console.error(
+      `Error fetching price for ${symbol} from Yahoo Finance:`,
+      error,
+    );
     return null;
   }
 }
@@ -37,18 +45,23 @@ export async function fetchYahooPrice(symbol) {
 
   if (pendingPrices.has(key)) return pendingPrices.get(key);
 
-  const pending = requestYahooPrice(key).then(price => {
-    // Failures are not cached, so the next request can try again.
-    if (price !== null) {
-      if (priceCache.size >= MAX_CACHE_ENTRIES) {
-        priceCache.delete(priceCache.keys().next().value);
+  const pending = requestYahooPrice(key)
+    .then((price) => {
+      // Failures are not cached, so the next request can try again.
+      if (price !== null) {
+        if (priceCache.size >= MAX_CACHE_ENTRIES) {
+          priceCache.delete(priceCache.keys().next().value);
+        }
+        priceCache.set(key, {
+          price,
+          expiresAt: Date.now() + PRICE_CACHE_TTL_MS,
+        });
       }
-      priceCache.set(key, { price, expiresAt: Date.now() + PRICE_CACHE_TTL_MS });
-    }
-    return price;
-  }).finally(() => {
-    pendingPrices.delete(key);
-  });
+      return price;
+    })
+    .finally(() => {
+      pendingPrices.delete(key);
+    });
   pendingPrices.set(key, pending);
   return pending;
 }

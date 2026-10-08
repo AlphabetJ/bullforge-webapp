@@ -13,7 +13,7 @@ Real-time stock valuations are dynamically fetched on-the-fly using the Yahoo Fi
 - 🕒 **Monthly Breakdown**: Analyze your realized profits and commissions paid month-by-month.
 - 🗃️ **Robust Database**: Stored locally in a lightweight SQLite database.
 - ⚙️ **CSV Ingestion Pipeline**: Command-line tool to parse historical trade record CSVs, automatically formats fields, generates stable index-based IDs, and imports them with duplicate prevention.
-- 🔒 **Privacy-First**: No external cloud tracking or database syncs. Your broker CSVs and databases are excluded from Git and kept entirely on your local machine.
+- 🔒 **Privacy-First**: Your broker CSVs and databases are excluded from Git and stored locally. Market prices are requested from Yahoo Finance; asset logo requests are sent to AnyLogo.
 
 ---
 
@@ -31,7 +31,7 @@ Real-time stock valuations are dynamically fetched on-the-fly using the Yahoo Fi
 │   ├── src/
 │   │   ├── components/     # Visual dashboard cards, tables, charts, and transaction forms
 │   │   ├── App.vue         # State management and UI tab layouts
-│   │   └── style.css       # Premium custom styling (Glassmorphism & Dark Mode)
+│   │   └── style.css       # Shared light/dark theme tokens
 │   └── package.json
 │
 ├── raw_data/               # Directory for broker CSV exports (ignored by git)
@@ -44,7 +44,7 @@ Real-time stock valuations are dynamically fetched on-the-fly using the Yahoo Fi
 
 ## Tech Stack
 
-- **Frontend**: Vue 3 (Composition API), Vite, Chart.js, HTML5/CSS3.
+- **Frontend**: Vue 3 (Composition API), Vite, SVG charts, HTML5/CSS3.
 - **Backend**: Next.js (App Router), SQLite (`sqlite3` driver).
 - **Data Ingestion**: Python 3.
 
@@ -54,7 +54,7 @@ Real-time stock valuations are dynamically fetched on-the-fly using the Yahoo Fi
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (v18 or higher recommended)
+- [Node.js](https://nodejs.org/) (v22.12 or higher recommended)
 - [Python 3](https://www.python.org/) (for running the CSV seeder)
 
 ---
@@ -64,7 +64,8 @@ Real-time stock valuations are dynamically fetched on-the-fly using the Yahoo Fi
 #### Quick Start (Single Command - Recommended)
 From the project root:
 ```bash
-# 1. Install all dependencies (both backend & frontend)
+# 1. Install root tools, then backend and frontend dependencies
+npm install
 npm run install:all
 
 # 2. Start both Backend & Frontend simultaneously
@@ -128,4 +129,13 @@ The script will:
 - Imported legacy JEPQ purchases with `csv_` IDs, fewer than one unit and zero fees are **estimated** dividend reinvestments. The original entries are preserved. New transactions explicitly record `source: TRADE` or `DIVIDEND_REINVESTMENT`, selected using the DRIP checkbox on the buy form; ordinary fractional purchases are not inferred as dividends.
 - The existing tracking boundary starts at the NVDA purchase of 9 shares on 2025-11-07 when present. The actual start date is displayed in the UI. Transactions before the boundary remain in the activity ledger but do not contribute to portfolio metrics.
 
-The database adds a nullable `source` column automatically while preserving existing transaction rows. Before this update, a local backup was saved as `backend/data/portfolio.before-income-ui.db` (ignored by Git). Calculation checks can be run with `node --test backend/tests/*.test.mjs`.
+The database adds a nullable `source` column automatically while preserving existing transaction rows. Calculation and market-price checks can be run with `npm test` from the repository root.
+
+### Code maintenance
+
+- `npm run format`: format frontend, backend and tests with Prettier.
+- `npm run format:check`: check formatting without editing files.
+- `npm test`: run backend calculation and price-cache tests with in-memory data.
+- `npm run build`: build the backend and frontend.
+
+Portfolio accounting is in `backend/src/lib/portfolio.js`; request handlers handle database access and market-price fetching. Frontend API state is in `frontend/src/composables/usePortfolio.js`. The CSV importer resolves paths relative to the project, so it works independently of the shell's current directory.

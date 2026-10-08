@@ -1,5 +1,12 @@
-# Vue 3 + Vite
+# Portfolio frontend
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+Vue 3 with Vite. The UI includes the dashboard, profit history, transactions and sell simulator. CSS variables in `src/style.css` define the light and dark themes. Asset logos use AnyLogo, with a text fallback when a logo cannot be loaded.
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+Run `npm run dev` from the repository root to start both services. Running `npm run dev` in this directory starts only Vite on port 5173; `/api` requests are proxied to the backend on port 3000.
+
+- `src/App.vue`: navigation and page composition.
+- `src/composables/usePortfolio.js`: API requests and portfolio loading state.
+- `src/components/TransactionHistory.vue`: activity filters and ledger.
+- `src/utils/format.js`: shared currency, share and date formatters.
+
+Run `npm run build` here to generate `dist/`. Formatting commands are available from the repository root.

@@ -23,7 +23,8 @@ if (process.env.NODE_ENV === 'production') {
 
 // Initialize tables
 const databaseReady = new Promise((resolve, reject) => {
-  db.run(`
+  db.run(
+    `
     CREATE TABLE IF NOT EXISTS transactions (
       id TEXT PRIMARY KEY,
       symbol TEXT NOT NULL,
@@ -33,18 +34,24 @@ const databaseReady = new Promise((resolve, reject) => {
       fees REAL NOT NULL DEFAULT 0.0,
       date TEXT NOT NULL
     )
-  `, (error) => {
-    if (error) return reject(error);
-    db.all('PRAGMA table_info(transactions)', (schemaError, columns) => {
-      if (schemaError) return reject(schemaError);
-      if (columns.some(column => column.name === 'source')) return resolve();
-      // Null preserves the distinction between legacy imports and explicit new entries.
-      db.run('ALTER TABLE transactions ADD COLUMN source TEXT', migrationError => {
-        if (migrationError) reject(migrationError);
-        else resolve();
+  `,
+    (error) => {
+      if (error) return reject(error);
+      db.all('PRAGMA table_info(transactions)', (schemaError, columns) => {
+        if (schemaError) return reject(schemaError);
+        if (columns.some((column) => column.name === 'source'))
+          return resolve();
+        // Null preserves the distinction between legacy imports and explicit new entries.
+        db.run(
+          'ALTER TABLE transactions ADD COLUMN source TEXT',
+          (migrationError) => {
+            if (migrationError) reject(migrationError);
+            else resolve();
+          },
+        );
       });
-    });
-  });
+    },
+  );
 });
 
 // Promise-based query wrappers
@@ -69,19 +76,6 @@ export async function allQuery(sql, params = []) {
         reject(err);
       } else {
         resolve(rows);
-      }
-    });
-  });
-}
-
-export async function getQuery(sql, params = []) {
-  await databaseReady;
-  return new Promise((resolve, reject) => {
-    db.get(sql, params, (err, row) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(row);
       }
     });
   });

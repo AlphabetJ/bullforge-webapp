@@ -7,9 +7,13 @@
     "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"cyan.bold,green.bold\" --kill-others-on-fail \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
     "dev:clean": "npm run clean --prefix backend && concurrently -n \"BACKEND,FRONTEND\" -c \"cyan.bold,green.bold\" --kill-others-on-fail \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
     "build": "npm run build --prefix backend && npm run build --prefix frontend",
-    "install:all": "npm install --prefix backend && npm install --prefix frontend"
+    "install:all": "npm install --prefix backend && npm install --prefix frontend",
+    "format": "prettier --write \"frontend/src/**/*.{js,vue,css}\" \"backend/src/**/*.js\" \"backend/tests/*.mjs\" \"*.json\" \"frontend/index.html\" \"{frontend/vite.config.js,backend/next.config.mjs}\"",
+    "format:check": "prettier --check \"frontend/src/**/*.{js,vue,css}\" \"backend/src/**/*.js\" \"backend/tests/*.mjs\" \"*.json\" \"frontend/index.html\" \"{frontend/vite.config.js,backend/next.config.mjs}\"",
+    "test": "node --test backend/tests/*.test.mjs"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "prettier": "^3.9.9"
   }
 }
