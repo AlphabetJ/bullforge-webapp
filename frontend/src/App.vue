@@ -55,10 +55,10 @@ onMounted(loadAllData);
 <template>
   <div class="app-container">
     <header class="header">
-      <div class="brand-section"><div class="brand-logo">$</div><span class="brand-name">Jateyanooo's Portfolio</span></div>
-      <nav class="nav-tabs" aria-label="Main navigation"><button v-for="tab in tabs" :key="tab.id" class="tab-btn" :class="{active:activeTab === tab.id}" :aria-current="activeTab === tab.id ? 'page' : undefined" @click="activeTab = tab.id">{{ tab.label }}</button></nav>
+      <div class="brand-section"><div class="brand-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17V7m5 10v-4m5 4V9m5 8V4"/></svg></div><span class="brand-name">Jateyanooo's Portfolio</span></div>
+      <nav class="nav-tabs" aria-label="Main navigation"><button v-for="tab in tabs" :key="tab.id" class="tab-btn" :class="{active:activeTab === tab.id}" :aria-current="activeTab === tab.id ? 'page' : undefined" @click="activeTab = tab.id"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-if="tab.id === 'dashboard'" d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/><path v-else-if="tab.id === 'profit-history'" d="M4 4v16h16M8 15l4-5 4 2 4-7"/><path v-else-if="tab.id === 'transactions'" d="M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4"/><path v-else d="M4 20V4h16v16H4zm4-12h8m-8 4h2m4 0h2m-8 4h2m4 0h2"/></svg>{{ tab.label }}</button></nav>
     </header>
-    <div class="page-heading"><div><h1>{{ titles[activeTab][0] }}</h1><p class="muted">{{ titles[activeTab][1] }}</p></div><div class="refresh-tools"><span v-if="updatedAt" class="muted">Calculated {{ updatedAt }} ICT · USD</span><button class="compact-button" :disabled="loading" @click="loadAllData">{{ loading ? 'Refreshing…' : '↻ Refresh' }}</button></div></div>
+    <div class="page-heading"><div><h1>{{ titles[activeTab][0] }}</h1><p class="muted">{{ titles[activeTab][1] }}</p></div><div class="refresh-tools"><span v-if="updatedAt" class="muted">Calculated {{ updatedAt }} ICT · USD</span><button class="compact-button" :disabled="loading" @click="loadAllData"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6 7a7 7 0 0 1 12-1l2 3M18 17a7 7 0 0 1-12 1l-2-3"/></svg>{{ loading ? 'Refreshing…' : 'Refresh' }}</button></div></div>
     <div v-if="error" class="error-banner" role="alert">{{ error }} <button class="compact-button" :disabled="loading" @click="loadAllData">Retry</button><p v-if="hasLoaded">Showing previously loaded data.</p></div>
     <div v-if="loading && !hasLoaded" class="loader-container"><div class="loader"></div><p>Loading your portfolio…</p></div>
     <main v-if="hasLoaded" :aria-busy="loading">
@@ -93,9 +93,9 @@ onMounted(loadAllData);
 </template>
 <style scoped>
 .brand-logo { font-size:1.4rem; font-weight:700; }
-.transaction-layout { display:grid; grid-template-columns:minmax(320px,2fr) minmax(0,3fr); align-items:start; gap:1rem; }
+.transaction-layout { display:grid; grid-template-columns:minmax(320px,2fr) minmax(0,3fr); align-items:start; gap:20px; }
 .transaction-form-column, .activity-card { min-width:0; }
-.activity-card { padding:1rem; }
+.activity-card { padding:24px; }
 .activity-card .panel-heading { margin-bottom:.75rem; }
 .transactions-view .ledger-table { max-height:680px; }
 .transactions-view .ledger-table table { min-width:760px; }
@@ -104,6 +104,6 @@ onMounted(loadAllData);
 .transaction-filters .compact-select { flex:1 1 120px; min-width:0; }
 .refresh-tools { display:flex; align-items:center; flex-wrap:wrap; gap:.75rem; font-size:.75rem; }
 .period-note { font-size:.75rem; margin-bottom:1rem; }
-.badge-income { color:#c084fc; background:#c084fc18; }
+.badge-income { color:var(--primary); background:var(--primary-glow); }
 @media(max-width:1050px) { .transaction-layout { grid-template-columns:1fr; } }
 </style>

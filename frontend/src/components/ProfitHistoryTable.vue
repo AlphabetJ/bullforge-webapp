@@ -58,7 +58,7 @@ const trend = computed(() => {
     </details>
     <div v-if="trend" class="card trend-card">
       <div class="panel-heading"><div><h2>Cumulative sale P/L</h2><p class="muted">เฉพาะกำไรจากการขายในช่วงและสินทรัพย์ที่เลือก · ไม่รวมปันผล</p></div><strong :class="realized >= 0 ? 'pl-positive' : 'pl-negative'">{{ currency(realized) }}</strong></div>
-      <svg viewBox="0 0 600 170" role="img" aria-label="Cumulative realized sale profit chart" class="profit-trend"><line x1="35" x2="565" :y1="trend.baseline" :y2="trend.baseline" stroke="#94a3b8" stroke-dasharray="4 4" opacity=".4"/><path :d="trend.path" fill="none" :stroke="realized >= 0 ? '#34d399' : '#fb7185'" stroke-width="3"/><circle v-for="(point, index) in trend.points" :key="index" :cx="point.x" :cy="point.y" r="3" fill="#c7d2fe"><title>{{ new Date(point.date).toLocaleDateString('en-GB') }}: {{ currency(point.amount) }}</title></circle><text x="35" y="18" fill="#94a3b8" font-size="11">{{ currency(trend.max) }}</text><text x="35" y="165" fill="#94a3b8" font-size="11">{{ currency(trend.min) }}</text></svg>
+      <svg viewBox="0 0 600 170" role="img" aria-label="Cumulative realized sale profit chart" class="profit-trend"><line x1="35" x2="565" :y1="trend.baseline" :y2="trend.baseline" stroke="#94a3b8" stroke-dasharray="4 4" opacity=".4"/><path :d="trend.path" fill="none" :stroke="realized >= 0 ? 'var(--success)' : 'var(--danger)'" stroke-width="3"/><circle v-for="(point, index) in trend.points" :key="index" :cx="point.x" :cy="point.y" r="3" fill="var(--primary)"><title>{{ new Date(point.date).toLocaleDateString('en-GB') }}: {{ currency(point.amount) }}</title></circle><text x="35" y="18" fill="var(--text-secondary)" font-size="11">{{ currency(trend.max) }}</text><text x="35" y="165" fill="var(--text-secondary)" font-size="11">{{ currency(trend.min) }}</text></svg>
       <div class="trend-axis"><span>{{ dateLabel(trend.first) }}</span><span>{{ dateLabel(trend.last) }}</span></div>
       <p v-if="ranked.length" class="muted">Highest total by asset: <strong>{{ ranked[0][0] }} {{ currency(ranked[0][1]) }}</strong> · Lowest total by asset: <strong>{{ ranked.at(-1)[0] }} {{ currency(ranked.at(-1)[1]) }}</strong></p>
     </div>
@@ -76,7 +76,7 @@ const trend = computed(() => {
 .search-input { max-width:200px; padding:.5rem .75rem; }
 .income-explanation summary { cursor:pointer; font-size:.85rem; font-weight:600; }
 .income-explanation p { font-size:.85rem; color:var(--text-secondary); margin:.5rem 0 0; line-height:1.7; }
-.income-explanation .estimate-note { color:#fbbf24; }
+.income-explanation .estimate-note { color:var(--warning); }
 .profit-trend { width:100%; max-height:210px; display:block; }
 .trend-axis { display:flex; justify-content:space-between; font-size:.75rem; color:var(--text-secondary); margin:.3rem 0 .7rem; }
 .dividend-details summary { cursor:pointer; font-weight:600; }

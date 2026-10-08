@@ -297,20 +297,24 @@ const submitForm = () => {
     </h2>
 
     <div class="type-selector">
-      <div 
+      <button
+        type="button"
+        :aria-pressed="type === 'BUY'"
         class="type-option" 
         :class="{ active: type === 'BUY', BUY: true }"
         @click="type = 'BUY'"
       >
-        BUY ASSET
-      </div>
-      <div 
+        Buy asset
+      </button>
+      <button
+        type="button"
+        :aria-pressed="type === 'SELL'"
         class="type-option" 
         :class="{ active: type === 'SELL', SELL: true }"
         @click="type = 'SELL'"
       >
-        SELL ASSET
-      </div>
+        Sell asset
+      </button>
     </div>
 
     <form @submit.prevent="submitForm">
@@ -391,7 +395,7 @@ const submitForm = () => {
               pattern="\d{2}/\d{2}/\d{4}"
               title="Please use DD/MM/YYYY format (e.g. 12/08/2026)"
             />
-            <button 
+            <button
               ref="calendarTrigger"
               type="button" 
               class="calendar-btn calendar-trigger"
@@ -493,11 +497,11 @@ const submitForm = () => {
       </div>
 
       <div v-if="errorMsg" style="color: var(--danger); font-size: 0.85rem; margin-top: 1rem; font-weight: 500;">
-        ⚠ {{ errorMsg }}
+        {{ errorMsg }}
       </div>
 
       <div v-if="successMsg" style="color: var(--success); font-size: 0.85rem; margin-top: 1rem; font-weight: 500;">
-        ✓ {{ successMsg }}
+        {{ successMsg }}
       </div>
 
       <div v-if="type === 'BUY'" class="income-source-choice">
@@ -506,7 +510,7 @@ const submitForm = () => {
       </div>
 
       <div class="btn-row">
-        <button 
+        <button
           type="submit" 
           class="btn btn-primary"
           :disabled="!isValid"
@@ -517,10 +521,10 @@ const submitForm = () => {
       </div>
     </form>
 
-    <details style="margin-top: 2rem; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 1rem;">
+    <details style="margin-top: 2rem; border-top: 1px solid var(--panel-border); padding-top: 1rem;">
       <summary class="muted">Advanced: replace portfolio with demo data</summary>
       <p class="muted">This permanently replaces all transaction records.</p>
-      <button 
+      <button
         type="button" 
         class="btn btn-secondary" 
         style="width: 100%; font-size: 0.8rem; padding: 0.5rem;"
@@ -573,10 +577,10 @@ const submitForm = () => {
   width: min(20rem, calc(100vw - 3rem));
   padding: 1.15rem;
   color: var(--text-primary);
-  background: linear-gradient(145deg, #202b40, #172132 70%);
-  border: 1px solid #39435c;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
   border-radius: 1.2rem;
-  box-shadow: 0 24px 60px #060b18a6, 0 0 0 4px #0b0f194d, inset 0 1px 0 #ffffff08;
+  box-shadow: var(--shadow-xl);
 }
 
 .calendar-heading,
@@ -693,8 +697,8 @@ const submitForm = () => {
 }
 
 .calendar-day.today {
-  color: #a5b4fc;
-  border-color: #818cf880;
+  color: var(--primary);
+  border-color: var(--primary);
 }
 
 .calendar-day.outside { color: #65748b; }
@@ -702,15 +706,15 @@ const submitForm = () => {
 .calendar-day:focus-visible,
 .calendar-nav button:focus-visible,
 .calendar-footer button:focus-visible {
-  outline: 2px solid #a5b4fc;
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
 .calendar-day.selected {
   color: #fff;
-  background: linear-gradient(135deg, #818cf8, #6366f1);
-  border-color: var(--primary, #6366f1);
-  box-shadow: 0 5px 14px rgba(99, 102, 241, 0.32);
+  background: var(--primary);
+  border-color: var(--primary);
+  box-shadow: none;
 }
 
 .calendar-footer {
@@ -723,21 +727,21 @@ const submitForm = () => {
 }
 
 .calendar-footer > span { display: flex; align-items: center; gap: 0.4rem; }
-.calendar-today-dot { width: 5px; height: 5px; border-radius: 50%; background: #a5b4fc; }
+.calendar-today-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--primary); }
 
 .calendar-footer button {
   padding: 0.35rem 0.6rem;
-  color: #c7d2fe;
+  color: var(--primary);
   font: inherit;
   font-weight: 700;
-  background: rgba(99, 102, 241, 0.12);
+  background: var(--primary-glow);
   border: 0;
   border-radius: 0.5rem;
   cursor: pointer;
 }
 
 .calendar-footer button:hover {
-  background: rgba(99, 102, 241, 0.2);
+  background: var(--primary-glow);
 }
 
 .calendar-popover-enter-active,

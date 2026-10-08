@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { currency } from '../utils/format';
 const props = defineProps({ holdings: { type: Array, required: true } });
 const basis = ref('market');
-const colors = ['#818cf8', '#22d3ee', '#fbbf24', '#c084fc', '#fb7185', '#34d399'];
+const colors = ['#002FA7', '#365dc0', '#6886d3', '#8e9ab5', '#b3bccd', '#4d5770'];
 const assets = computed(() => props.holdings.map(asset => ({ ...asset, allocation: basis.value === 'market' ? asset.weight : asset.costWeight, amount: basis.value === 'market' ? asset.currentValue : asset.costBasis })).sort((a, b) => b.allocation - a.allocation));
 </script>
 <template>
@@ -20,8 +20,8 @@ const assets = computed(() => props.holdings.map(asset => ({ ...asset, allocatio
   </div>
 </template>
 <style scoped>
-.allocation-list { display:grid; gap:1rem; }
+.allocation-list { display:grid; gap:1.5rem; }
 .allocation-label { display:flex; justify-content:space-between; font-size:.9rem; }
-.allocation-track { height:8px; background:#ffffff0b; border-radius:8px; overflow:hidden; margin:.35rem 0 .2rem; }
+.allocation-track { height:5px; background:var(--bg-dark); border-radius:8px; overflow:hidden; margin:.35rem 0 .2rem; }
 .allocation-track > div { height:100%; border-radius:8px; transition:width .2s; }
 </style>

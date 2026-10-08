@@ -152,9 +152,9 @@ const scenarioMatrix = computed(() => {
 const priceMarkers = computed(() => {
   if (!selectedStock.value) return [];
   const items = [
-    { label: 'Cost / share', value: selectedStock.value.costBasis / selectedStock.value.shares, color: '#94a3b8' },
-    { label: 'Market', value: selectedStock.value.currentPrice, color: '#22d3ee' },
-    { label: 'Target', value: targetPrice.value, color: '#a5b4fc' }
+    { label: 'Cost / share', value: selectedStock.value.costBasis / selectedStock.value.shares, color: '#747580' },
+    { label: 'Market', value: selectedStock.value.currentPrice, color: '#365dc0' },
+    { label: 'Target', value: targetPrice.value, color: '#002FA7' }
   ];
   const min = Math.min(...items.map(item => item.value));
   const max = Math.max(...items.map(item => item.value));
@@ -202,7 +202,7 @@ const formatPercent = (val) => {
 
     <!-- Empty State if no holdings -->
     <div v-if="ownedStocks.length === 0" class="card empty-state fade-in-up">
-      <div class="empty-state-icon">📊</div>
+      <div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 4v16h16M8 16v-5m5 5V6m5 10v-7"/></svg></div>
       <div class="empty-state-title">No Active Holdings Available</div>
       <p>คุณยังไม่มีรายการหุ้นที่ถือครองในพอร์ต กรุณาบันทึกการซื้อหุ้นในแท็บ Transactions ก่อนใช้งานเครื่องมือจำลอง</p>
     </div>
@@ -422,9 +422,7 @@ const formatPercent = (val) => {
             :class="marketDiff.dollar >= 0 ? 'banner-upside' : 'banner-below'"
           >
             <div class="banner-icon">
-              <span v-if="marketDiff.dollar > 0">🚀</span>
-              <span v-else-if="marketDiff.dollar === 0">🎯</span>
-              <span v-else>⚠️</span>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6m0 3v1"/></svg>
             </div>
             <div class="banner-text">
               <strong v-if="marketDiff.dollar > 0">
@@ -541,7 +539,7 @@ const formatPercent = (val) => {
 /* Header Banner */
 .sim-header-card {
   padding: 1.5rem 1.75rem;
-  background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+  background: var(--panel-bg);
 }
 
 .sim-header-content {
@@ -562,12 +560,12 @@ const formatPercent = (val) => {
   width: 44px;
   height: 44px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  background: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #ffffff;
-  box-shadow: 0 0 15px var(--primary-glow);
+  box-shadow: none;
   flex-shrink: 0;
 }
 
@@ -600,7 +598,7 @@ const formatPercent = (val) => {
   align-items: center;
   gap: 1.5rem;
   padding: 1.25rem 1.5rem;
-  background: rgba(30, 41, 59, 0.5);
+  background: var(--panel-bg);
   flex-wrap: wrap;
 }
 
@@ -651,7 +649,7 @@ const formatPercent = (val) => {
 /* Quick Presets Card */
 .presets-card {
   padding: 1.25rem 1.5rem;
-  background: rgba(15, 23, 42, 0.6);
+  background: var(--bg-dark);
 }
 
 .presets-header {
@@ -690,16 +688,16 @@ const formatPercent = (val) => {
   font-weight: 600;
   font-family: var(--font-sans);
   border: 1px solid var(--panel-border);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--panel-bg);
   color: var(--text-secondary);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .preset-chip:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--bg-dark);
   color: var(--text-primary);
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: var(--panel-hover-border);
   transform: translateY(-1px);
 }
 
@@ -714,7 +712,7 @@ const formatPercent = (val) => {
   background: var(--success);
   border-color: var(--success);
   color: #ffffff;
-  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+  box-shadow: none;
 }
 
 .preset-chip.loss {
@@ -728,14 +726,14 @@ const formatPercent = (val) => {
   background: var(--danger);
   border-color: var(--danger);
   color: #ffffff;
-  box-shadow: 0 2px 10px rgba(244, 63, 94, 0.3);
+  box-shadow: none;
 }
 
 .preset-chip.neutral.active {
   background: var(--primary);
   border-color: var(--primary);
   color: #ffffff;
-  box-shadow: 0 2px 10px var(--primary-glow);
+  box-shadow: none;
 }
 
 /* Two-column layout */
@@ -803,7 +801,7 @@ const formatPercent = (val) => {
 }
 
 .highlight-input {
-  border-color: rgba(99, 102, 241, 0.4);
+  border-color: var(--primary);
 }
 
 /* Results Card */
@@ -821,7 +819,7 @@ const formatPercent = (val) => {
 }
 
 .outcome-card {
-  background: rgba(15, 23, 42, 0.5);
+  background: var(--bg-dark);
   border: 1px solid var(--panel-border);
   border-radius: var(--radius-md);
   padding: 1.15rem;
@@ -832,7 +830,7 @@ const formatPercent = (val) => {
 }
 
 .outcome-card:hover {
-  background: rgba(15, 23, 42, 0.8);
+  background: var(--panel-bg);
 }
 
 .outcome-label {
@@ -855,9 +853,7 @@ const formatPercent = (val) => {
 }
 
 .primary-gradient-text {
-  background: linear-gradient(135deg, #a5b4fc 0%, #38bdf8 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--primary);
 }
 
 .card-success-border {
@@ -895,8 +891,8 @@ const formatPercent = (val) => {
 }
 
 .banner-upside {
-  background: rgba(6, 182, 212, 0.08);
-  border: 1px solid rgba(6, 182, 212, 0.2);
+  background: var(--primary-glow);
+  border: 1px solid var(--panel-border);
 }
 
 .banner-below {
@@ -936,7 +932,7 @@ const formatPercent = (val) => {
 }
 
 .scenario-table tr.row-active td {
-  background: rgba(99, 102, 241, 0.12);
+  background: var(--primary-glow);
 }
 
 .scenario-badge {
@@ -958,7 +954,7 @@ const formatPercent = (val) => {
 }
 
 .badge-breakeven {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--bg-dark);
   color: var(--text-secondary);
 }
 
@@ -968,7 +964,7 @@ const formatPercent = (val) => {
   font-weight: 600;
   border-radius: 4px;
   border: 1px solid var(--panel-border);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--panel-bg);
   color: var(--text-secondary);
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -992,7 +988,7 @@ const formatPercent = (val) => {
 .sim-header-card { padding:1.25rem; }
 .sim-body { gap:1rem; }
 .sim-main-title { font-size:1.3rem; }
-.price-comparison { margin-bottom:1rem; background:#ffffff04; padding:.75rem; border-radius:10px; }
+.price-comparison { margin-bottom:1rem; background:var(--bg-dark); padding:.75rem; border-radius:10px; }
 .price-comparison svg { display:block; width:100%; }
 .price-marker-labels { display:grid; grid-template-columns:repeat(3,1fr); gap:.5rem; text-align:center; }
 .price-marker-labels small, .price-marker-labels strong { display:block; font-size:.75rem; }
