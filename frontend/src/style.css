@@ -1,26 +1,26 @@
-/* Swiss financial workspace: neutral surfaces, one blue accent, precise rules. */
+/* Light palette adapted from Codex Proof Light: paper, warm ink and green. */
 :root {
   color-scheme: light;
-  --bg-dark: #f7f7f8;
-  --panel-bg: #ffffff;
-  --panel-border: #e3e3e8;
-  --panel-hover-border: #cbccd5;
-  --primary: #002fa7;
-  --primary-glow: rgba(0, 47, 167, 0.09);
-  --secondary: #002fa7;
-  --text-primary: #191a20;
-  --text-secondary: #62636d;
-  --text-muted: #747580;
-  --success: #157347;
-  --success-bg: #edf7f1;
-  --danger: #b42338;
-  --danger-bg: #fcf0f2;
-  --warning: #89620b;
-  --warning-bg: #fbf6e9;
+  --bg-dark: #efede6;
+  --panel-bg: #f5f3ed;
+  --panel-border: #dcd9d0;
+  --panel-hover-border: #c5c1b5;
+  --primary: #3d755d;
+  --primary-glow: rgba(61, 117, 93, 0.1);
+  --secondary: #3d755d;
+  --text-primary: #2f312d;
+  --text-secondary: #4b4d48;
+  --text-muted: #6d6a61;
+  --success: #3d755d;
+  --success-bg: #e5ece2;
+  --danger: #a3453d;
+  --danger-bg: #f2e5de;
+  --warning: #806724;
+  --warning-bg: #eee7ce;
   --font-sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --font-display: var(--font-sans);
-  --shadow-sm: 0 1px 2px #191a2004;
-  --shadow-xl: 0 20px 60px #191a2014;
+  --shadow-sm: 0 1px 2px #2f312d04;
+  --shadow-xl: 0 20px 60px #2f312d14;
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
@@ -28,25 +28,25 @@
   --transition-normal: 220ms ease;
 }
 :root {
-  --primary-solid: #002fa7;
-  --primary-hover: #002789;
-  --success-solid: #157347;
-  --danger-solid: #b42338;
-  --input-border: #dcdce3;
-  --input-hover-border: #bcbec8;
-  --row-border: #eeeef1;
-  --placeholder: #8c8d96;
-  --danger-border: #e7c5cb;
-  --warning-border: #e9debd;
-  --chart-1: #002fa7;
-  --chart-2: #6886d3;
-  --chart-3: #4d5770;
-  --chart-4: #a4b6e6;
-  --chart-5: #365dc0;
-  --chart-6: #8e9ab5;
-  --chart-7: #222c47;
-  --chart-8: #c4cde0;
-  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2362636d' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
+  --primary-solid: #3d755d;
+  --primary-hover: #315f4b;
+  --success-solid: #3d755d;
+  --danger-solid: #a3453d;
+  --input-border: #ccc8bb;
+  --input-hover-border: #aaa696;
+  --row-border: #e4e1d7;
+  --placeholder: #6d6a61;
+  --danger-border: #d8b6a9;
+  --warning-border: #d9cc9e;
+  --chart-1: #3d755d;
+  --chart-2: #5f6ac2;
+  --chart-3: #7a766d;
+  --chart-4: #d3b45b;
+  --chart-5: #739982;
+  --chart-6: #949acb;
+  --chart-7: #2f312d;
+  --chart-8: #b3b09e;
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234b4d48' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
 }
 :root[data-theme='dark'] {
   color-scheme: dark;
