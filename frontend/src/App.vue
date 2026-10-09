@@ -9,6 +9,7 @@ import ProfitHistoryTable from './components/ProfitHistoryTable.vue';
 import SellSimulator from './components/SellSimulator.vue';
 import CashFlow from './components/CashFlow.vue';
 import { currency, percent, dateLabel } from './utils/format';
+import { unrealizedView } from './utils/unrealized';
 const theme = ref(
   document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light',
 );
@@ -71,6 +72,22 @@ const cashWeight = computed(() =>
     : null,
 );
 const summary = computed(() => portfolio.value.summary);
+const unrealizedMode = ref('net');
+const unrealizedOptions = [
+  { value: 'profit', label: 'P', title: 'Profit only' },
+  { value: 'net', label: 'P/L', title: 'Net profit / loss' },
+  { value: 'loss', label: 'L', title: 'Loss only' },
+];
+const unrealized = computed(() =>
+  unrealizedView(portfolio.value.holdings, summary.value, unrealizedMode.value),
+);
+const unrealizedCaption = computed(() =>
+  unrealizedMode.value === 'profit'
+    ? 'profitable positions'
+    : unrealizedMode.value === 'loss'
+      ? 'losing positions'
+      : 'open positions',
+);
 const priceFallbacks = computed(() =>
   portfolio.value.holdings
     .filter((asset) => asset.priceSource === 'cost-fallback')
@@ -296,19 +313,49 @@ const updatedAt = computed(() =>
             >
           </div>
           <div class="card summary-card">
-            <span class="summary-label">Unrealized P/L</span
-            ><strong
+            <div class="unrealized-heading">
+              <span class="summary-label">{{
+                unrealizedMode === 'profit'
+                  ? 'Unrealized profit'
+                  : unrealizedMode === 'loss'
+                    ? 'Unrealized loss'
+                    : 'Unrealized P/L'
+              }}</span>
+              <div
+                class="pl-slider"
+                role="radiogroup"
+                aria-label="Unrealized profit or loss view"
+                :style="{
+                  '--selection': unrealizedOptions.findIndex(
+                    (o) => o.value === unrealizedMode,
+                  ),
+                }"
+              >
+                <span class="pl-slider-thumb" aria-hidden="true"></span>
+                <label
+                  v-for="option in unrealizedOptions"
+                  :key="option.value"
+                  :title="option.title"
+                  ><input
+                    v-model="unrealizedMode"
+                    type="radio"
+                    name="unrealized-mode"
+                    :value="option.value"
+                    :aria-label="option.title"
+                  /><span>{{ option.label }}</span></label
+                >
+              </div>
+            </div>
+            <strong
               class="summary-value"
-              :class="
-                summary.totalUnrealizedPL >= 0 ? 'pl-positive' : 'pl-negative'
-              "
-              >{{ currency(summary.totalUnrealizedPL) }}</strong
-            ><small
-              :class="
-                summary.totalUnrealizedPL >= 0 ? 'pl-positive' : 'pl-negative'
-              "
-              >{{ percent(summary.totalUnrealizedPLPercent) }} · open
-              positions</small
+              aria-live="polite"
+              :class="unrealized.amount >= 0 ? 'pl-positive' : 'pl-negative'"
+              >{{ currency(unrealized.amount) }}</strong
+            >
+            <small
+              :class="unrealized.amount >= 0 ? 'pl-positive' : 'pl-negative'"
+              >{{ percent(unrealized.percent) }} · {{ unrealized.count }}
+              {{ unrealizedCaption }}</small
             >
           </div>
           <div class="card summary-card">
@@ -365,6 +412,66 @@ const updatedAt = computed(() =>
   </div>
 </template>
 <style scoped>
+.unrealized-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.pl-slider {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 36px);
+  padding: 3px;
+  background: var(--bg-dark);
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+}
+.pl-slider-thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: 36px;
+  border-radius: 5px;
+  background: var(--primary);
+  transform: translateX(calc(var(--selection) * 36px));
+  transition: transform 180ms ease;
+}
+.pl-slider label {
+  position: relative;
+  cursor: pointer;
+}
+.pl-slider input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.pl-slider label > span {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 30px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.pl-slider input:checked + span {
+  color: var(--panel-bg);
+}
+.pl-slider input:focus-visible + span {
+  outline: 2px solid var(--primary);
+  outline-offset: 5px;
+  border-radius: 5px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pl-slider-thumb {
+    transition: none;
+  }
+}
+
 .dashboard-liquidity {
   grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
 }
