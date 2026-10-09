@@ -316,7 +316,9 @@ const updatedAt = computed(() =>
   align-items: start;
   gap: 20px;
 }
-.transaction-form-column,
+.transaction-form-column {
+  min-width: 0;
+}
 .refresh-tools {
   display: flex;
   align-items: center;

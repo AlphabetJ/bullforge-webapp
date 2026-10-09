@@ -537,16 +537,17 @@ const submitForm = () => {
                 <div class="calendar-grid calendar-weekdays" aria-hidden="true">
                   <span
                     v-for="weekday in [
-                      'SU',
-                      'MO',
-                      'TU',
-                      'WE',
-                      'TH',
-                      'FR',
-                      'SA',
+                      { label: 'SU', color: '#ef4444' },
+                      { label: 'MO', color: '#eab308' },
+                      { label: 'TU', color: '#ec4899' },
+                      { label: 'WE', color: '#22c55e' },
+                      { label: 'TH', color: '#f97316' },
+                      { label: 'FR', color: '#3b82f6' },
+                      { label: 'SA', color: '#a855f7' },
                     ]"
-                    :key="weekday"
-                    >{{ weekday }}</span
+                    :key="weekday.label"
+                    :style="{ color: weekday.color }"
+                    >{{ weekday.label }}</span
                   >
                 </div>
                 <div class="calendar-grid calendar-dates">
