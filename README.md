@@ -139,3 +139,48 @@ The database adds a nullable `source` column automatically while preserving exis
 - `npm run build`: build the backend and frontend.
 
 Portfolio accounting is in `backend/src/lib/portfolio.js`; request handlers handle database access and market-price fetching. Frontend API state is in `frontend/src/composables/usePortfolio.js`. The CSV importer resolves paths relative to the project, so it works independently of the shell's current directory.
+
+### Cash Flow: import PDF statements on demand
+
+The Cash Flow page reads `backend/data/cash-flow.json`. It never executes Python
+when launching or refreshing the app. From the project root, run explicitly:
+
+```sh
+python3 -m pip install -r scripts/requirements.txt
+python3 scripts/import_cash_flow.py
+```
+
+Then select **Cash Flow → Reload imported data**. The importer reads only
+`raw_data/PDF-Webull-*.PDF`, checks monthly cash reconciliation and extracted trade
+totals, and atomically replaces the saved snapshot. It does not change the portfolio
+SQLite database or manual trades. PDF sources and the snapshot stay Git-ignored.
+Annual summaries and tax certificates are excluded to prevent duplicate income.
+
+Tracked trades begin at the application's configured tracking boundary, in
+chronological ICT order.
+Cash balances, funding and income use full calendar-month statements (November
+includes 1–6 November) and the whole brokerage account, including older assets.
+The page focuses on current holdings plus user-reported USD cash and monthly account
+value (stocks and cash). Historical values come from NET ACCOUNT VALUE in each
+statement. Monthly value growth subtracts deposits less withdrawals; it includes
+FX effects and fees and is not a time-weighted return. Historical USD amounts are
+THB values translated at each statement's USD/THB rate.
+
+Current cash is stored separately in Git-ignored
+`backend/data/cash-flow-settings.json` (`cashUsd`, `asOf`, `source`) so PDF reimports
+do not overwrite it. Current THB equivalents default to the latest statement FX
+rate, clearly dated, and users can change that rate on the page. This is not live FX.
+The USD view has a button to show supplementary THB amounts. Current values are
+separate from the historical chart, since current-month funding is not yet covered
+by the statements.
+
+The monthly value chart uses selectable bars with details on hover, focus or click.
+Cash Flow also shows dated deposits, withdrawals and both FX directions, with
+actual paid/received currency amounts and executed rates. Filters select type and
+year. These amounts do not use the current-value display FX rate. The explicit
+PDF importer verifies detailed funding and FX totals against each monthly cash
+summary before replacing the snapshot. Test extraction rules with:
+
+```sh
+python3 -m unittest discover -s scripts -p 'test_*.py'
+```

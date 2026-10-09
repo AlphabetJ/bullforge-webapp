@@ -11,6 +11,19 @@ export function usePortfolio() {
     summary: {},
   });
   const transactions = ref([]);
+  const currentCash = ref(null);
+  const cashError = ref('');
+  async function loadCurrentCash() {
+    try {
+      const response = await fetch('/api/current-cash');
+      if (!response.ok) throw new Error('Unable to load current cash.');
+      currentCash.value = (await response.json()).currentCash;
+      cashError.value = '';
+    } catch {
+      currentCash.value = null;
+      cashError.value = 'Cash balance unavailable. Refresh to retry.';
+    }
+  }
   async function loadAllData() {
     loading.value = true;
     error.value = '';
@@ -18,6 +31,7 @@ export function usePortfolio() {
       const [portfolioResponse, transactionResponse] = await Promise.all([
         fetch('/api/portfolio'),
         fetch('/api/transactions'),
+        loadCurrentCash(),
       ]);
       if (!portfolioResponse.ok || !transactionResponse.ok)
         throw new Error('Unable to load portfolio data. Please retry.');
@@ -74,6 +88,8 @@ export function usePortfolio() {
     error,
     portfolio,
     transactions,
+    currentCash,
+    cashError,
     loadAllData,
     handleAddTransaction,
     handleResetPortfolio,

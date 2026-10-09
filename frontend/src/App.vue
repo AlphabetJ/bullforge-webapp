@@ -7,6 +7,7 @@ import StockTable from './components/StockTable.vue';
 import SalesForm from './components/SalesForm.vue';
 import ProfitHistoryTable from './components/ProfitHistoryTable.vue';
 import SellSimulator from './components/SellSimulator.vue';
+import CashFlow from './components/CashFlow.vue';
 import { currency, percent, dateLabel } from './utils/format';
 const theme = ref(
   document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light',
@@ -25,9 +26,14 @@ const tabs = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'profit-history', label: 'Profit History' },
   { id: 'transactions', label: 'Transactions' },
+  { id: 'cash-flow', label: 'Cash Flow' },
   { id: 'simulator', label: 'Sell Simulator' },
 ];
 const titles = {
+  'cash-flow': [
+    'Cash Flow',
+    'Track your portfolio value, cash and monthly growth.',
+  ],
   dashboard: [
     'Portfolio overview',
     'Your holdings, current value and returns at a glance.',
@@ -48,10 +54,22 @@ const {
   error,
   portfolio,
   transactions,
+  currentCash,
+  cashError,
   loadAllData,
   handleAddTransaction,
   handleResetPortfolio,
 } = usePortfolio();
+const totalPortfolioValue = computed(() =>
+  currentCash.value
+    ? portfolio.value.summary.totalCurrentValue + currentCash.value.cashUsd
+    : null,
+);
+const cashWeight = computed(() =>
+  totalPortfolioValue.value > 0
+    ? (currentCash.value.cashUsd / totalPortfolioValue.value) * 100
+    : null,
+);
 const summary = computed(() => portfolio.value.summary);
 const priceFallbacks = computed(() =>
   portfolio.value.holdings
@@ -118,6 +136,10 @@ const updatedAt = computed(() =>
               d="M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4"
             />
             <path
+              v-else-if="tab.id === 'cash-flow'"
+              d="M3 12h18m-4-4 4 4-4 4M5 5h8M5 19h8"
+            />
+            <path
               v-else
               d="M4 20V4h16v16H4zm4-12h8m-8 4h2m4 0h2m-8 4h2m4 0h2"
             /></svg
@@ -170,7 +192,7 @@ const updatedAt = computed(() =>
         <p class="muted">{{ titles[activeTab][1] }}</p>
       </div>
       <div class="refresh-tools">
-        <span v-if="updatedAt" class="muted"
+        <span v-if="updatedAt && activeTab !== 'cash-flow'" class="muted"
           >Calculated {{ updatedAt }} ICT · USD</span
         ><button
           class="compact-button"
@@ -205,11 +227,47 @@ const updatedAt = computed(() =>
       <p>Loading your portfolio…</p>
     </div>
     <main v-if="hasLoaded" :aria-busy="loading">
-      <p v-if="activeTab !== 'simulator'" class="period-note muted">
+      <p
+        v-if="activeTab !== 'simulator' && activeTab !== 'cash-flow'"
+        class="period-note muted"
+      >
         Tracking from {{ dateLabel(summary.periodStart) }} · average-cost method
         · recorded fees included
       </p>
       <template v-if="activeTab === 'dashboard'">
+        <section
+          class="grid-summary dashboard-liquidity"
+          aria-label="Portfolio value including cash"
+        >
+          <div class="card summary-card primary">
+            <span class="summary-label">{{
+              summary.valuationIsEstimated
+                ? 'Estimated total portfolio value'
+                : 'Total portfolio value'
+            }}</span
+            ><strong class="summary-value">{{
+              totalPortfolioValue === null ? '—' : currency(totalPortfolioValue)
+            }}</strong
+            ><small class="muted">Holdings + reported USD cash</small>
+          </div>
+          <div class="card summary-card">
+            <span class="summary-label">USD Cash</span
+            ><strong class="summary-value">{{
+              currentCash ? currency(currentCash.cashUsd) : '—'
+            }}</strong
+            ><small class="muted"
+              >{{
+                currentCash
+                  ? `Reported ${dateLabel(currentCash.asOf)}`
+                  : cashError || 'No current cash balance recorded'
+              }}<template v-if="cashWeight !== null">
+                · {{ cashWeight.toFixed(1) }}% of total value</template
+              ></small
+            ><button class="text-link" @click="activeTab = 'cash-flow'">
+              View Cash Flow →
+            </button>
+          </div>
+        </section>
         <section
           class="grid-summary metrics-four"
           aria-label="Portfolio summary"
@@ -298,6 +356,7 @@ const updatedAt = computed(() =>
           />
         </div>
       </section>
+      <CashFlow v-if="activeTab === 'cash-flow'" :portfolio="portfolio" />
       <SellSimulator
         v-if="activeTab === 'simulator'"
         :holdings="portfolio.holdings"
@@ -306,6 +365,14 @@ const updatedAt = computed(() =>
   </div>
 </template>
 <style scoped>
+.dashboard-liquidity {
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+}
+@media (max-width: 700px) {
+  .dashboard-liquidity {
+    grid-template-columns: 1fr;
+  }
+}
 .brand-logo {
   font-size: 1.4rem;
   font-weight: 700;

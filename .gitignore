@@ -51,3 +51,8 @@ raw_data/*
 *.njsproj
 *.sln
 *.sw?
+
+# Extracted personal PDF cash flow
+backend/data/cash-flow.json
+backend/data/cash-flow.tmp
+backend/data/cash-flow-settings.json
