@@ -275,7 +275,9 @@ const updatedAt = computed(() =>
             ><small class="muted"
               >{{
                 currentCash
-                  ? `Reported ${dateLabel(currentCash.asOf)}`
+                  ? currentCash.adjustedTransactions
+                    ? `Updated from ${currentCash.adjustedTransactions} recorded trades · baseline ${dateLabel(currentCash.asOf)}`
+                    : `Reported ${dateLabel(currentCash.asOf)}`
                   : cashError || 'No current cash balance recorded'
               }}<template v-if="cashWeight !== null">
                 · {{ cashWeight.toFixed(1) }}% of total value</template

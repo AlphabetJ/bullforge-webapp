@@ -1,5 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { allQuery } from '@/lib/db';
+import { cashBalance } from '@/lib/cash-ledger';
 
 export async function readCurrentCash() {
   try {
@@ -15,7 +17,10 @@ export async function readCurrentCash() {
       !/^\d{4}-\d{2}-\d{2}$/.test(cash.asOf)
     )
       throw new Error('Invalid cash settings.');
-    return cash;
+    const postings = await allQuery(
+      'SELECT cash_delta_cents FROM transactions WHERE cash_delta_cents IS NOT NULL',
+    );
+    return cashBalance(cash, postings);
   } catch (error) {
     if (error.code === 'ENOENT') return null;
     throw error;

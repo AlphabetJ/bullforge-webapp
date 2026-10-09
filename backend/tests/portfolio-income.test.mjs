@@ -6,6 +6,11 @@ const portfolioSource = await readFile(
   new URL('../src/lib/portfolio.js', import.meta.url),
   'utf8',
 );
+const cashLedgerSource = await readFile(
+  new URL('../src/lib/cash-ledger.js', import.meta.url),
+  'utf8',
+);
+const cashLedgerUrl = `data:text/javascript;base64,${Buffer.from(cashLedgerSource).toString('base64')}`;
 const portfolioUrl = `data:text/javascript;base64,${Buffer.from(portfolioSource).toString('base64')}`;
 const source = await readFile(
   new URL('../src/app/api/portfolio/route.js', import.meta.url),
@@ -128,6 +133,7 @@ test('transaction API persists explicit source and rejects dividend sales withou
   globalThis.__incomeTestWrites = writes;
   try {
     const route = transactionSource
+      .replace("from '@/lib/cash-ledger'", `from '${cashLedgerUrl}'`)
       .replace("from '@/lib/portfolio'", `from '${portfolioUrl}'`)
       .replace(
         "import { NextResponse } from 'next/server';",
@@ -153,6 +159,7 @@ test('transaction API persists explicit source and rejects dividend sales withou
     assert.equal(success.status, 201);
     assert.equal((await success.json()).source, 'DIVIDEND_REINVESTMENT');
     assert.equal(writes[0][1].at(-1), 'DIVIDEND_REINVESTMENT');
+    assert.equal(writes[0][1].at(-2), 0);
     const failure = await POST(request({ ...dividend, type: 'SELL' }));
     assert.equal(failure.status, 400);
     assert.equal(writes.length, 1);
@@ -160,6 +167,7 @@ test('transaction API persists explicit source and rejects dividend sales withou
       request(buy('2', 'AAPL', 0.1, 50, '2026-01-02')),
     );
     assert.equal((await ordinary.json()).source, 'TRADE');
+    assert.equal(writes[1][1].at(-2), -500);
   } finally {
     delete globalThis.__incomeTestWrites;
   }

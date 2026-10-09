@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { allQuery, runQuery } from '@/lib/db';
 import { calculateLedger } from '@/lib/portfolio';
+import { transactionCashDelta } from '@/lib/cash-ledger';
+import { randomUUID } from 'node:crypto';
 
 // GET /api/transactions - Retrieve all transactions
 export async function GET() {
@@ -48,21 +50,21 @@ export async function POST(request) {
       );
     }
     const numShares = parseFloat(shares);
-    if (isNaN(numShares) || numShares <= 0) {
+    if (!Number.isFinite(numShares) || numShares <= 0) {
       return NextResponse.json(
         { error: 'Shares must be a positive number.' },
         { status: 400 },
       );
     }
     const numPrice = parseFloat(price);
-    if (isNaN(numPrice) || numPrice <= 0) {
+    if (!Number.isFinite(numPrice) || numPrice <= 0) {
       return NextResponse.json(
         { error: 'Price must be a positive number.' },
         { status: 400 },
       );
     }
     const numFees = parseFloat(fees || 0);
-    if (isNaN(numFees) || numFees < 0) {
+    if (!Number.isFinite(numFees) || numFees < 0) {
       return NextResponse.json(
         { error: 'Fees must be a non-negative number.' },
         { status: 400 },
@@ -93,7 +95,7 @@ export async function POST(request) {
     }
 
     const newTx = {
-      id: Date.now().toString(),
+      id: randomUUID(),
       symbol: symbol.toUpperCase().trim(),
       type,
       shares: numShares,
@@ -104,7 +106,7 @@ export async function POST(request) {
     };
 
     await runQuery(
-      `INSERT INTO transactions (id, symbol, type, shares, price, fees, date, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO transactions (id, symbol, type, shares, price, fees, date, cash_delta_cents, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         newTx.id,
         newTx.symbol,
@@ -113,6 +115,7 @@ export async function POST(request) {
         newTx.price,
         newTx.fees,
         newTx.date,
+        transactionCashDelta(newTx),
         newTx.source,
       ],
     );

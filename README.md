@@ -184,3 +184,22 @@ summary before replacing the snapshot. Test extraction rules with:
 ```sh
 python3 -m unittest discover -s scripts -p 'test_*.py'
 ```
+
+
+### Live USD cash after manually recorded trades
+
+The reported cash snapshot is the baseline. Existing transactions migrate with
+`cash_delta_cents = NULL` and are already included in that baseline. New manually
+recorded transactions store their cash movement in the same SQLite INSERT as the
+trade: BUY subtracts shares × price plus fees; SELL adds shares × price less fees.
+Dividend reinvestment has zero cash movement because its income is spent in the
+same event. Amounts are rounded per transaction to integer cents.
+
+`/api/current-cash` and the current-value cards in Cash Flow use baseline plus
+recorded cash movements. Refreshing never reapplies a movement. New entries affect
+cash even when backdated; existing history is not applied again. PDF importing
+only replaces historical statement data, leaving the baseline and live ledger
+unchanged. Dashboard refresh loads the updated cash after a successful trade.
+Historical graphs, FX and transfer records still update only through PDF import.
+Deposits, withdrawals or cash dividends without reinvestment are not currently
+manual trade actions; those require a separate cash adjustment workflow.

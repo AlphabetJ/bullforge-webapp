@@ -121,7 +121,9 @@ const cards = computed(() => [
     label: 'เงินสด USD',
     value: cash.value,
     note: data.value?.currentCash
-      ? `ยอดที่แจ้ง ณ ${dateLabel(data.value.currentCash.asOf)}`
+      ? data.value.currentCash.adjustedTransactions
+        ? `ปรับตาม ${data.value.currentCash.adjustedTransactions} รายการใหม่ · ยอดตั้งต้น ${dateLabel(data.value.currentCash.asOf)}`
+        : `ยอดที่แจ้ง ณ ${dateLabel(data.value.currentCash.asOf)}`
       : 'ยังไม่มีข้อมูลเงินสดปัจจุบัน',
   },
 ]);
@@ -193,8 +195,8 @@ const cards = computed(() => [
         </div>
       </section>
       <p class="muted current-note">
-        ยอดปัจจุบันใช้ราคาหุ้นล่าสุดและเงินสดที่คุณแจ้ง ไม่ใช่ยอดปิดเดือนใน
-        statement
+        ยอดปัจจุบันใช้ราคาหุ้นล่าสุดและเงินสดที่ปรับตามรายการที่บันทึก
+        ส่วนประวัติย้อนหลังอัปเดตจาก statement
       </p>
       <section class="card growth-panel">
         <div class="cash-toolbar">

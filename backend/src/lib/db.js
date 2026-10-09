@@ -39,16 +39,21 @@ const databaseReady = new Promise((resolve, reject) => {
       if (error) return reject(error);
       db.all('PRAGMA table_info(transactions)', (schemaError, columns) => {
         if (schemaError) return reject(schemaError);
-        if (columns.some((column) => column.name === 'source'))
-          return resolve();
-        // Null preserves the distinction between legacy imports and explicit new entries.
-        db.run(
-          'ALTER TABLE transactions ADD COLUMN source TEXT',
-          (migrationError) => {
-            if (migrationError) reject(migrationError);
-            else resolve();
-          },
-        );
+        const migrations = [
+          ['source', 'ALTER TABLE transactions ADD COLUMN source TEXT'],
+          [
+            'cash_delta_cents',
+            'ALTER TABLE transactions ADD COLUMN cash_delta_cents INTEGER',
+          ],
+        ].filter(([name]) => !columns.some((column) => column.name === name));
+        function migrateNext() {
+          const migration = migrations.shift();
+          if (!migration) return resolve();
+          db.run(migration[1], (error) =>
+            error ? reject(error) : migrateNext(),
+          );
+        }
+        migrateNext();
       });
     },
   );
